@@ -50,11 +50,11 @@ const mockPermissions = {
     5: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_competitions', display_name: 'Керування конкурсами', category: 'competitions' }, { name: 'manage_users', display_name: 'Керування користувачами', category: 'users' }, { name: 'manage_roles', display_name: 'Керування ролями', category: 'system' }, { name: 'system_settings', display_name: 'Налаштування системи', category: 'system' }]
 };
 
-const mockCompetitions = [
-    { id: 1, title: 'Всеукраїнська олімпіада з математики', subject: 'Математика', level: 'national', status: 'active', start_date: '2026-04-01', end_date: '2026-04-15', description: 'Щорічна олімпіада для учнів 9-11 класів', created_by: 3 },
-    { id: 2, title: 'Конкурс юних фізиків', subject: 'Фізика', level: 'regional', status: 'registration', start_date: '2026-05-01', end_date: '2026-05-10', description: 'Регіональний конкурс з фізики', created_by: 3 },
-    { id: 3, title: 'Олімпіада з інформатики', subject: 'Інформатика', level: 'national', status: 'completed', start_date: '2026-02-01', end_date: '2026-02-15', description: 'Змагання з програмування', created_by: 2 },
-    { id: 4, title: 'Конкурс есе з української мови', subject: 'Українська мова', level: 'school', status: 'active', start_date: '2026-03-20', end_date: '2026-04-05', description: 'Шкільний конкурс творчих робіт', created_by: 2 }
+let mockCompetitions = [
+    { id: 1, title: 'Всеукраїнська олімпіада з математики', subject: 'mathematics', level: 'national', status: 'active', start_date: '2026-04-01', end_date: '2026-04-15', description: 'Щорічна олімпіада для учнів 9-11 класів', created_by: 3, max_participants: 500, applications_count: 0, created_at: '2026-01-15' },
+    { id: 2, title: 'Конкурс юних фізиків', subject: 'physics', level: 'regional', status: 'active', start_date: '2026-05-01', end_date: '2026-05-10', description: 'Регіональний конкурс з фізики', created_by: 3, max_participants: 200, applications_count: 0, created_at: '2026-01-20' },
+    { id: 3, title: 'Олімпіада з інформатики', subject: 'informatics', level: 'national', status: 'completed', start_date: '2026-02-01', end_date: '2026-02-15', description: 'Змагання з програмування', created_by: 2, max_participants: 300, applications_count: 0, created_at: '2026-01-10' },
+    { id: 4, title: 'Конкурс есе з української мови', subject: 'ukrainian', level: 'school', status: 'active', start_date: '2026-03-20', end_date: '2026-04-05', description: 'Шкільний конкурс творчих робіт', created_by: 2, max_participants: 100, applications_count: 0, created_at: '2026-02-01' }
 ];
 
 let pool = null;
@@ -435,6 +435,21 @@ const requirePermission = (permissionName) => {
     return async (req, res, next) => {
         try {
             const userId = req.user.userId;
+            const roleId = req.user.roleId;
+            
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const permissions = mockPermissions[roleId] || [];
+                const hasPermission = permissions.some(p => p.name === permissionName);
+                
+                if (!hasPermission) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Недостатньо прав для виконання цієї дії'
+                    });
+                }
+                return next();
+            }
             
             const result = await pool.query(
                 `SELECT EXISTS (
@@ -473,6 +488,18 @@ const requireRole = (allowedRoles) => {
     return async (req, res, next) => {
         try {
             const userId = req.user.userId;
+            const userRole = req.user.role;
+            
+            // MOCK MODE
+            if (MOCK_MODE) {
+                if (!allowedRoles.includes(userRole)) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Доступ заборонено для вашої ролі'
+                    });
+                }
+                return next();
+            }
             
             const result = await pool.query(
                 `SELECT r.name as role_name
@@ -506,6 +533,38 @@ const requireRole = (allowedRoles) => {
  */
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const mockUser = mockUsers.find(u => u.id === req.user.userId);
+            if (!mockUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Користувача не знайдено'
+                });
+            }
+            
+            const mockRole = mockRoles.find(r => r.id === mockUser.role_id);
+            const permissions = mockPermissions[mockUser.role_id] || [];
+            
+            return res.status(200).json({
+                success: true,
+                user: {
+                    id: mockUser.id,
+                    first_name: mockUser.first_name,
+                    last_name: mockUser.last_name,
+                    email: mockUser.email,
+                    created_at: mockUser.created_at || new Date().toISOString(),
+                    role: {
+                        id: mockUser.role_id,
+                        name: mockRole?.name || mockUser.role,
+                        display_name: mockRole?.display_name || 'Користувач',
+                        description: mockRole?.description || ''
+                    },
+                    permissions: permissions
+                }
+            });
+        }
+        
         // Отримуємо користувача з роллю
         const result = await pool.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
@@ -758,6 +817,50 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         const userRole = req.user.role;
         const userId = req.user.userId;
 
+        // MOCK MODE
+        if (MOCK_MODE) {
+            let filteredCompetitions = [...mockCompetitions];
+            
+            // Фільтр по предмету
+            if (subject && subject !== 'all') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.subject === subject);
+            }
+            
+            // Фільтр по рівню
+            if (level && level !== 'all') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.level === level);
+            }
+            
+            // Фільтр по статусу
+            if (status && status !== 'all') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.status === status);
+            }
+            
+            // Пошук по назві
+            if (search) {
+                const searchLower = search.toLowerCase();
+                filteredCompetitions = filteredCompetitions.filter(c => 
+                    c.title.toLowerCase().includes(searchLower) || 
+                    (c.description && c.description.toLowerCase().includes(searchLower))
+                );
+            }
+            
+            // Для student показуємо тільки активні
+            if (userRole === 'student') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.status === 'active');
+            }
+            
+            // Для teacher показуємо свої або активні
+            if (userRole === 'teacher') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.created_by === userId || c.status === 'active');
+            }
+            
+            return res.status(200).json({
+                success: true,
+                competitions: filteredCompetitions
+            });
+        }
+
         let query = `
             SELECT c.*, 
                    u.first_name as creator_first_name, 
@@ -826,6 +929,14 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         });
     }
 });
+    } catch (error) {
+        console.error('Помилка отримання кон��урсів:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
 
 /**
  * API: Отримання конкурсу за ID
@@ -872,7 +983,7 @@ app.get('/api/competitions/:id', authenticateToken, async (req, res) => {
  */
 app.post('/api/competitions', authenticateToken, requirePermission('create_competition'), async (req, res) => {
     try {
-        const { title, description, subject, level, start_date, end_date, max_participants } = req.body;
+        const { title, description, subject, level, start_date, end_date, max_participants, status } = req.body;
         const userId = req.user.userId;
 
         if (!title || !subject || !level || !start_date || !end_date) {
@@ -882,11 +993,36 @@ app.post('/api/competitions', authenticateToken, requirePermission('create_compe
             });
         }
 
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const newCompetition = {
+                id: mockCompetitions.length + 1,
+                title,
+                description: description || '',
+                subject,
+                level,
+                start_date,
+                end_date,
+                max_participants: max_participants || 100,
+                created_by: userId,
+                status: status || 'draft',
+                applications_count: 0,
+                created_at: new Date().toISOString()
+            };
+            mockCompetitions.push(newCompetition);
+            
+            return res.status(201).json({
+                success: true,
+                message: 'Конкурс успішно створено',
+                competition: newCompetition
+            });
+        }
+
         const result = await pool.query(
             `INSERT INTO competitions (title, description, subject, level, start_date, end_date, max_participants, created_by, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'draft')
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING *`,
-            [title, description, subject, level, start_date, end_date, max_participants || 100, userId]
+            [title, description, subject, level, start_date, end_date, max_participants || 100, userId, status || 'draft']
         );
 
         res.status(201).json({
