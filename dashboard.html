@@ -197,7 +197,7 @@
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         
         if (!token) {
-            window.location.href = '/auth.html';
+            window.location.replace('/auth.html');
         } else {
             // Відображення імені користувача
             const userName = document.getElementById('userName');
@@ -210,7 +210,7 @@
         document.getElementById('logoutBtn').addEventListener('click', () => {
             localStorage.removeItem('authToken');
             localStorage.removeItem('user');
-            window.location.href = '/auth.html';
+            window.location.replace('/auth.html');
         });
     </script>
 </body>

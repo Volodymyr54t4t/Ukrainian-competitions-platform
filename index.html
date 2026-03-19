@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Єдина платформа конкурсів України</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a365d 0%, #2563eb 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .loading-container {
+            text-align: center;
+            color: white;
+        }
+        
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fbbf24;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .loading-text {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <p class="loading-text">Завантаження...</p>
+    </div>
+    
+    <script>
+        // Перевірка авторизації та редірект
+        (function() {
+            const token = localStorage.getItem('authToken');
+            
+            if (token) {
+                // Користувач має токен - перевіряємо його валідність
+                fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Токен валідний - переходимо на dashboard
+                        window.location.href = '/dashboard.html';
+                    } else {
+                        // Токен невалідний - очищаємо та переходимо на авторизацію
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                        window.location.href = '/auth.html';
+                    }
+                })
+                .catch(() => {
+                    // Помилка з'єднання - переходимо на авторизацію
+                    window.location.href = '/auth.html';
+                });
+            } else {
+                // Немає токена - переходимо на авторизацію
+                window.location.href = '/auth.html';
+            }
+        })();
+    </script>
+</body>
+</html>
