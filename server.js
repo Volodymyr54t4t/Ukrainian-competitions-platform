@@ -15,7 +15,7 @@ const path = require('path');
 
 // Ініціалізація Express додатку
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
@@ -492,6 +492,74 @@ app.patch('/api/admin/users/:id/role', authenticateToken, requireAdmin, async (r
     }
 });
 
+/**
+ * API: Отримання списку всіх ролей (тільки для admin)
+ * GET /api/admin/roles
+ */
+app.get('/api/admin/roles', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT id, name, description, created_at FROM roles ORDER BY id'
+        );
+
+        res.status(200).json({
+            success: true,
+            roles: result.rows
+        });
+
+    } catch (error) {
+        console.error('Помилка отримання ролей:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Отримання списку всіх дозволів та мапінгу ролей (тільки для admin)
+ * GET /api/admin/permissions
+ */
+app.get('/api/admin/permissions', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        // Отримуємо всі дозволи
+        const permissionsResult = await pool.query(
+            'SELECT id, name, description FROM permissions ORDER BY id'
+        );
+
+        // Отримуємо мапінг ролей до дозволів
+        const rolePermissionsResult = await pool.query(
+            `SELECT r.name as role_name, p.name as permission_name
+             FROM role_permissions rp
+             JOIN roles r ON rp.role_id = r.id
+             JOIN permissions p ON rp.permission_id = p.id
+             ORDER BY r.id, p.id`
+        );
+
+        // Формуємо мапу ролей до масиву дозволів
+        const rolePermissions = {};
+        rolePermissionsResult.rows.forEach(row => {
+            if (!rolePermissions[row.role_name]) {
+                rolePermissions[row.role_name] = [];
+            }
+            rolePermissions[row.role_name].push(row.permission_name);
+        });
+
+        res.status(200).json({
+            success: true,
+            permissions: permissionsResult.rows,
+            rolePermissions: rolePermissions
+        });
+
+    } catch (error) {
+        console.error('Помилка отримання дозволів:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
 // Маршрут для головної сторінки авторизації
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'auth.html'));
@@ -505,6 +573,11 @@ app.get('/dashboard.html', (req, res) => {
 // Маршрут для RBAC тестування
 app.get('/rbac-test.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'rbac-test.html'));
+});
+
+// Маршрут для адмін панелі
+app.get('/admin-panel.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'admin-panel.html'));
 });
 
 // Запуск сервера
