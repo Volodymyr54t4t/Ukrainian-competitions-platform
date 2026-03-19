@@ -1,2 +1,1 @@
 # Ukrainian-competitions-platform
-
