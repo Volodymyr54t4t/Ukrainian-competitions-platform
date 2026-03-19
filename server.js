@@ -845,14 +845,15 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
                 );
             }
             
-            // Для student показуємо тільки активні
-            if (userRole === 'student') {
-                filteredCompetitions = filteredCompetitions.filter(c => c.status === 'active');
-            }
-            
+            // Адміністратор бачить всі конкурси
             // Для teacher показуємо свої або активні
             if (userRole === 'teacher') {
                 filteredCompetitions = filteredCompetitions.filter(c => c.created_by === userId || c.status === 'active');
+            }
+            
+            // Для student показуємо тільки активні
+            if (userRole === 'student') {
+                filteredCompetitions = filteredCompetitions.filter(c => c.status === 'active');
             }
             
             return res.status(200).json({
@@ -901,7 +902,9 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
             paramIndex++;
         }
 
-        // Для teacher показуємо тільки свої конкурси або публічні
+        // Адміністратор бачить всі конкурси (без додаткових фільтрів)
+        
+        // Для teacher показуємо тільки свої конкурси або активні
         if (userRole === 'teacher') {
             query += ` AND (c.created_by = $${paramIndex} OR c.status = 'active')`;
             params.push(userId);
@@ -915,7 +918,14 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
 
         query += ` ORDER BY c.created_at DESC`;
 
+        console.log('[v0] Competitions query:', query);
+        console.log('[v0] Competitions params:', params);
+        console.log('[v0] User role:', userRole, 'userId:', userId);
+
         const result = await pool.query(query, params);
+        
+        console.log('[v0] Competitions found:', result.rows.length);
+        console.log('[v0] Competition statuses:', result.rows.map(c => ({ id: c.id, title: c.title.substring(0, 30), status: c.status, created_by: c.created_by })));
 
         res.status(200).json({
             success: true,
