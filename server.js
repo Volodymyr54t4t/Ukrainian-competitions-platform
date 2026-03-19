@@ -646,11 +646,24 @@ app.get('/dashboard.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
-// Запуск сервера
-app.listen(PORT, () => {
-    console.log(`Сервер запущено на порту ${PORT}`);
-    console.log(`Відкрийте http://localhost:${PORT} для доступу до платформи`);
-});
+// Запуск сервера тільки якщо файл запущено напряму
+if (require.main === module) {
+    const server = app.listen(PORT, () => {
+        console.log(`Сервер запущено на порту ${PORT}`);
+        console.log(`Відкрийте http://localhost:${PORT} для доступу до платформи`);
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Порт ${PORT} зайнятий, спроба порту ${PORT + 1}...`);
+            app.listen(PORT + 1, () => {
+                console.log(`Сервер запущено на порту ${PORT + 1}`);
+            });
+        } else {
+            console.error('Помилка сервера:', err);
+        }
+    });
+}
 
 // Експорт для тестування та middleware
 module.exports = { app, authenticateToken, requirePermission, requireRole };
