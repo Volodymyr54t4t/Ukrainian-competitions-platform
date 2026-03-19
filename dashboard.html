@@ -192,18 +192,44 @@
     </main>
     
     <script>
-        // Перевірка авторизації
+        // Перевірка авторизації з RBAC
         const token = localStorage.getItem('authToken');
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
         
         if (!token) {
             window.location.href = '/auth.html';
         } else {
-            // Відображення імені користувача
-            const userName = document.getElementById('userName');
-            if (user.first_name && user.last_name) {
-                userName.textContent = `${user.first_name} ${user.last_name}`;
-            }
+            // Отримуємо актуальні дані користувача з сервера
+            fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const user = data.user;
+                    const userName = document.getElementById('userName');
+                    
+                    // Відображення імені та ролі
+                    if (user.first_name && user.last_name) {
+                        userName.textContent = `${user.first_name} ${user.last_name} (${user.role?.display_name || 'Користувач'})`;
+                    }
+                    
+                    // Зберігаємо оновлені дані
+                    localStorage.setItem('user', JSON.stringify(user));
+                    
+                    // Логування дозволів для дебагу
+                    console.log('User permissions:', user.permissions);
+                } else {
+                    // Токен невалідний
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    window.location.href = '/auth.html';
+                }
+            })
+            .catch(error => {
+                console.error('Auth check error:', error);
+            });
         }
         
         // Вихід з системи
@@ -212,6 +238,20 @@
             localStorage.removeItem('user');
             window.location.href = '/auth.html';
         });
+        
+        // Функція перевірки дозволу
+        async function hasPermission(permissionName) {
+            const token = localStorage.getItem('authToken');
+            try {
+                const response = await fetch(`/api/auth/check-permission/${permissionName}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                return data.has_permission;
+            } catch (error) {
+                return false;
+            }
+        }
     </script>
 </body>
 </html>
