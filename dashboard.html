@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Єдина платформа конкурсів України</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #F9FAFB;
+            min-height: 100vh;
+            color: #1F2937;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #0A2540 0%, #1E3A8A 100%);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: #FACC15;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-text {
+            color: white;
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+        
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .user-name {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9375rem;
+        }
+        
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .main {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        
+        .welcome-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .welcome-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #0A2540;
+            margin-bottom: 0.5rem;
+        }
+        
+        .welcome-subtitle {
+            color: #6B7280;
+            font-size: 1rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6B7280;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1E3A8A;
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #1E3A8A 0%, #7C3AED 100%);
+            border-radius: 16px;
+            padding: 2rem;
+            color: white;
+        }
+        
+        .info-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+        
+        .info-card p {
+            opacity: 0.9;
+            line-height: 1.7;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" stroke="#0A2540" stroke-width="2" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <span class="logo-text">Єдина платформа конкурсів</span>
+        </div>
+        <div class="user-menu">
+            <span class="user-name" id="userName">Користувач</span>
+            <button class="logout-btn" id="logoutBtn">Вийти</button>
+        </div>
+    </header>
+    
+    <main class="main">
+        <div class="welcome-section">
+            <h1 class="welcome-title">Вітаємо на платформі!</h1>
+            <p class="welcome-subtitle">Ви успішно авторизувались. Тут ви зможете переглядати та брати участь у конкурсах.</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Активні конкурси</div>
+                <div class="stat-value">24</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Ваші заявки</div>
+                <div class="stat-value">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Нові сповіщення</div>
+                <div class="stat-value">3</div>
+            </div>
+        </div>
+        
+        <div class="info-card">
+            <h3>Розпочніть свою подорож</h3>
+            <p>Перегляньте доступні конкурси та подайте заявку на участь. Наша платформа об'єднує освітні, наукові та творчі конкурси з усієї України.</p>
+        </div>
+    </main>
+    
+    <script>
+        // Перевірка авторизації
+        const token = localStorage.getItem('authToken');
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        
+        if (!token) {
+            window.location.href = '/auth.html';
+        } else {
+            // Відображення імені користувача
+            const userName = document.getElementById('userName');
+            if (user.first_name && user.last_name) {
+                userName.textContent = `${user.first_name} ${user.last_name}`;
+            }
+        }
+        
+        // Вихід з системи
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            window.location.href = '/auth.html';
+        });
+    </script>
+</body>
+</html>

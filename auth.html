@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизація | Єдина платформа конкурсів України</title>
+    <link rel="stylesheet" href="css/auth.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="32" height="32" rx="8" fill="#FACC15"/>
+                        <path d="M8 12L16 8L24 12V20L16 24L8 20V12Z" stroke="#0A2540" stroke-width="2" stroke-linejoin="round"/>
+                        <path d="M16 14V18M14 16H18" stroke="#0A2540" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <span class="logo-text">Єдина платформа конкурсів</span>
+            </div>
+            <nav class="header-nav">
+                <a href="#" class="nav-link">Про платформу</a>
+                <a href="#" class="nav-link">Конкурси</a>
+                <a href="#" class="nav-link">Контакти</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="auth-container">
+            <!-- Auth Card -->
+            <div class="auth-card">
+                <!-- Welcome Text -->
+                <div class="auth-header">
+                    <h1 class="auth-title">Ласкаво просимо</h1>
+                    <p class="auth-subtitle">Увійдіть або створіть акаунт для участі в конкурсах</p>
+                </div>
+
+                <!-- Tab Switcher -->
+                <div class="tab-switcher">
+                    <button class="tab-btn active" data-tab="login">Увійти</button>
+                    <button class="tab-btn" data-tab="register">Зареєструватися</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form active">
+                    <div class="form-group">
+                        <label for="loginEmail" class="form-label">Email</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3.33334 3.33333H16.6667C17.5833 3.33333 18.3333 4.08333 18.3333 5V15C18.3333 15.9167 17.5833 16.6667 16.6667 16.6667H3.33334C2.41667 16.6667 1.66667 15.9167 1.66667 15V5C1.66667 4.08333 2.41667 3.33333 3.33334 3.33333Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M18.3333 5L10 10.8333L1.66667 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <input type="email" id="loginEmail" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loginPassword" class="form-label">Пароль</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3.33334" y="8.33333" width="13.3333" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M5.83334 8.33333V5.83333C5.83334 3.53215 7.69882 1.66666 10 1.66666C12.3012 1.66666 14.1667 3.53215 14.1667 5.83333V8.33333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="10" cy="13.3333" r="1.25" fill="currentColor"/>
+                            </svg>
+                            <input type="password" id="loginPassword" class="form-input" placeholder="Введіть пароль" required>
+                            <button type="button" class="password-toggle" data-target="loginPassword">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1.66667 10C1.66667 10 4.16667 4.16666 10 4.16666C15.8333 4.16666 18.3333 10 18.3333 10C18.3333 10 15.8333 15.8333 10 15.8333C4.16667 15.8333 1.66667 10 1.66667 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-footer">
+                        <a href="#" class="forgot-link">Забули пароль?</a>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-text">Увійти</span>
+                        <span class="btn-loader"></span>
+                    </button>
+
+                    <div class="error-message" id="loginError"></div>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName" class="form-label">Ім'я</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6.66666" r="3.33333" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M3.33334 17.5C3.33334 14.2783 6.31811 11.6667 10 11.6667C13.6819 11.6667 16.6667 14.2783 16.6667 17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <input type="text" id="firstName" class="form-input" placeholder="Ваше ім'я" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lastName" class="form-label">Прізвище</label>
+                            <div class="input-wrapper">
+                                <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="10" cy="6.66666" r="3.33333" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M3.33334 17.5C3.33334 14.2783 6.31811 11.6667 10 11.6667C13.6819 11.6667 16.6667 14.2783 16.6667 17.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                                <input type="text" id="lastName" class="form-input" placeholder="Ваше прізвище" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="registerEmail" class="form-label">Email</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3.33334 3.33333H16.6667C17.5833 3.33333 18.3333 4.08333 18.3333 5V15C18.3333 15.9167 17.5833 16.6667 16.6667 16.6667H3.33334C2.41667 16.6667 1.66667 15.9167 1.66667 15V5C1.66667 4.08333 2.41667 3.33333 3.33334 3.33333Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M18.3333 5L10 10.8333L1.66667 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <input type="email" id="registerEmail" class="form-input" placeholder="your@email.com" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="registerPassword" class="form-label">Пароль</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3.33334" y="8.33333" width="13.3333" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M5.83334 8.33333V5.83333C5.83334 3.53215 7.69882 1.66666 10 1.66666C12.3012 1.66666 14.1667 3.53215 14.1667 5.83333V8.33333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="10" cy="13.3333" r="1.25" fill="currentColor"/>
+                            </svg>
+                            <input type="password" id="registerPassword" class="form-input" placeholder="Мінімум 6 символів" required>
+                            <button type="button" class="password-toggle" data-target="registerPassword">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1.66667 10C1.66667 10 4.16667 4.16666 10 4.16666C15.8333 4.16666 18.3333 10 18.3333 10C18.3333 10 15.8333 15.8333 10 15.8333C4.16667 15.8333 1.66667 10 1.66667 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="password-strength" id="passwordStrength">
+                            <div class="strength-bar"></div>
+                            <span class="strength-text"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword" class="form-label">Підтвердіть пароль</label>
+                        <div class="input-wrapper">
+                            <svg class="input-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3.33334" y="8.33333" width="13.3333" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M5.83334 8.33333V5.83333C5.83334 3.53215 7.69882 1.66666 10 1.66666C12.3012 1.66666 14.1667 3.53215 14.1667 5.83333V8.33333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="10" cy="13.3333" r="1.25" fill="currentColor"/>
+                            </svg>
+                            <input type="password" id="confirmPassword" class="form-input" placeholder="Повторіть пароль" required>
+                            <button type="button" class="password-toggle" data-target="confirmPassword">
+                                <svg class="eye-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1.66667 10C1.66667 10 4.16667 4.16666 10 4.16666C15.8333 4.16666 18.3333 10 18.3333 10C18.3333 10 15.8333 15.8333 10 15.8333C4.16667 15.8333 1.66667 10 1.66667 10Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                    <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="agreeTerms" required>
+                        <label for="agreeTerms">Я погоджуюсь з <a href="#">умовами використання</a></label>
+                    </div>
+
+                    <button type="submit" class="submit-btn">
+                        <span class="btn-text">Створити акаунт</span>
+                        <span class="btn-loader"></span>
+                    </button>
+
+                    <div class="error-message" id="registerError"></div>
+                    <div class="success-message" id="registerSuccess"></div>
+                </form>
+            </div>
+
+            <!-- Info Section -->
+            <div class="info-section">
+                <div class="info-content">
+                    <h2 class="info-title">Відкрийте нові можливості</h2>
+                    <p class="info-text">Єдина платформа для участі в освітніх, наукових та творчих конкурсах України</p>
+                    
+                    <ul class="features-list">
+                        <li class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <span>Доступ до всіх конкурсів України</span>
+                        </li>
+                        <li class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <span>Онлайн-подача документів</span>
+                        </li>
+                        <li class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <span>Відстеження статусу заявок</span>
+                        </li>
+                        <li class="feature-item">
+                            <div class="feature-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <span>Сповіщення про нові конкурси</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="info-decoration">
+                    <div class="decoration-circle circle-1"></div>
+                    <div class="decoration-circle circle-2"></div>
+                    <div class="decoration-circle circle-3"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Єдина платформа конкурсів України. Всі права захищені.</p>
+        </div>
+    </footer>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>
