@@ -16,9 +16,9 @@ const MENU_CONFIG = {
             {
                 title: 'Головне',
                 items: [
-                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true },
-                    { id: 'my-competitions', label: 'Мої конкурси', icon: 'trophy', badge: null },
-                    { id: 'apply', label: 'Подати заявку', icon: 'plus-circle' },
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
+                    { id: 'competitions', label: 'Конкурси', icon: 'trophy', href: '/competitions.html' },
+                    { id: 'my-competitions', label: 'Мої заявки', icon: 'file-text', badge: null },
                     { id: 'results', label: 'Результати', icon: 'chart-bar' }
                 ]
             },
@@ -38,15 +38,15 @@ const MENU_CONFIG = {
             {
                 title: 'Головне',
                 items: [
-                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true },
-                    { id: 'students', label: 'Мої учні', icon: 'users' },
-                    { id: 'competitions', label: 'Конкурси', icon: 'trophy' }
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
+                    { id: 'competitions', label: 'Конкурси', icon: 'trophy', href: '/competitions.html' },
+                    { id: 'students', label: 'Мої учні', icon: 'users' }
                 ]
             },
             {
                 title: 'Управління',
                 items: [
-                    { id: 'create-competition', label: 'Створити конкурс', icon: 'plus-circle', permission: 'create_competition' },
+                    { id: 'create-competition', label: 'Створити конкурс', icon: 'plus-circle', permission: 'create_competition', href: '/competitions.html' },
                     { id: 'analytics', label: 'Аналітика', icon: 'chart-bar' },
                     { id: 'reports', label: 'Звіти', icon: 'file-text' }
                 ]
@@ -65,8 +65,8 @@ const MENU_CONFIG = {
             {
                 title: 'Головне',
                 items: [
-                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true },
-                    { id: 'all-competitions', label: 'Всі конкурси', icon: 'trophy' },
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
+                    { id: 'competitions', label: 'Всі конкурси', icon: 'trophy', href: '/competitions.html' },
                     { id: 'applications', label: 'Заявки', icon: 'inbox', badge: '12' }
                 ]
             },
@@ -94,7 +94,8 @@ const MENU_CONFIG = {
             {
                 title: 'Головне',
                 items: [
-                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true },
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
+                    { id: 'competitions', label: 'Конкурси', icon: 'trophy', href: '/competitions.html' },
                     { id: 'works', label: 'Роботи для оцінки', icon: 'file-text', badge: '8' },
                     { id: 'evaluation', label: 'Оцінювання', icon: 'check-square' }
                 ]
@@ -115,7 +116,7 @@ const MENU_CONFIG = {
             {
                 title: 'Головне',
                 items: [
-                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true },
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
                     { id: 'overview', label: 'Огляд системи', icon: 'activity' }
                 ]
             },
@@ -129,7 +130,7 @@ const MENU_CONFIG = {
             {
                 title: 'Система',
                 items: [
-                    { id: 'competitions-admin', label: 'Конкурси', icon: 'trophy' },
+                    { id: 'competitions', label: 'Конкурси', icon: 'trophy', href: '/competitions.html' },
                     { id: 'system-settings', label: 'Налаштування', icon: 'sliders' },
                     { id: 'logs', label: 'Логи системи', icon: 'terminal' },
                     { id: 'backup', label: 'Резервні копії', icon: 'database' }
@@ -163,7 +164,7 @@ const DASHBOARD_CONFIG = {
             { label: 'Перемоги', value: '32', icon: 'award', color: 'purple', change: '+2' }
         ],
         quickActions: [
-            { id: 'create', label: 'Створити конкурс', desc: 'Новий конкурс', icon: 'plus-circle', color: 'blue', permission: 'create_competition' },
+            { id: 'create', label: 'Створити конкурс', desc: '��овий конкурс', icon: 'plus-circle', color: 'blue', permission: 'create_competition' },
             { id: 'students', label: 'Мої учні', desc: 'Список учнів', icon: 'users', color: 'yellow' },
             { id: 'analytics', label: 'Аналітика', desc: 'Статистика', icon: 'chart-bar', color: 'green' },
             { id: 'reports', label: 'Звіти', desc: 'Генерація звітів', icon: 'file-text', color: 'purple' }
@@ -325,9 +326,10 @@ function renderMenuByRole(role) {
             const activeClass = item.active ? 'active' : '';
             const icon = ICONS[item.icon] || ICONS.home;
             const badge = item.badge ? `<span class="nav-badge">${item.badge}</span>` : '';
+            const href = item.href || '#';
             
             html += `
-                <a href="#" class="nav-item ${activeClass}" data-page="${item.id}">
+                <a href="${href}" class="nav-item ${activeClass}" data-page="${item.id}">
                     ${icon}
                     <span>${item.label}</span>
                     ${badge}
@@ -343,6 +345,11 @@ function renderMenuByRole(role) {
     // Додаємо обробники кліків на пункти меню
     sidebarNav.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
+            const href = item.getAttribute('href');
+            // Якщо є реальний href - переходимо по ньому
+            if (href && href !== '#') {
+                return; // Дозволяємо стандартну навігацію
+            }
             e.preventDefault();
             const pageId = item.dataset.page;
             setActiveNavItem(item);
@@ -408,10 +415,10 @@ function renderProfileCard() {
                     ${ICONS.settings}
                     <span>Налаштування</span>
                 </button>
-                <button class="profile-btn primary" onclick="handleNavigation('competitions')">
+                <a href="/competitions.html" class="profile-btn primary">
                     ${ICONS.trophy}
                     <span>Конкурси</span>
-                </button>
+                </a>
             </div>
         </div>
     `;
