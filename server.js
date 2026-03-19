@@ -816,6 +816,8 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         const { subject, level, status, search } = req.query;
         const userRole = req.user.role;
         const userId = req.user.userId;
+        
+        console.log('[v0] GET /api/competitions - userRole:', userRole, 'userId:', userId);
 
         // MOCK MODE
         if (MOCK_MODE) {
@@ -862,11 +864,20 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
             });
         }
 
+        // Спочатку перевіримо чи існує таблиця competition_applications
+        let applicationsSubquery = '0';
+        try {
+            await pool.query('SELECT 1 FROM competition_applications LIMIT 1');
+            applicationsSubquery = '(SELECT COUNT(*) FROM competition_applications WHERE competition_id = c.id)';
+        } catch (e) {
+            console.log('[v0] Table competition_applications does not exist, using 0');
+        }
+        
         let query = `
             SELECT c.*, 
                    u.first_name as creator_first_name, 
                    u.last_name as creator_last_name,
-                   (SELECT COUNT(*) FROM competition_applications WHERE competition_id = c.id) as applications_count
+                   ${applicationsSubquery} as applications_count
             FROM competitions c
             LEFT JOIN users u ON c.created_by = u.id
             WHERE 1=1
@@ -902,37 +913,35 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
             paramIndex++;
         }
 
-        // Адміністратор бачить всі конкурси (без додаткових фільтрів)
-        
-        // Для teacher показуємо тільки свої конкурси або активні
+        // Фільтрація по ролях:
+        // - admin бачить ВСІ конкурси
+        // - teacher бачить свої конкурси + активні
+        // - student бачить тільки активні
         if (userRole === 'teacher') {
             query += ` AND (c.created_by = $${paramIndex} OR c.status = 'active')`;
             params.push(userId);
             paramIndex++;
-        }
-
-        // Для student показуємо тільки активні
-        if (userRole === 'student') {
+        } else if (userRole === 'student') {
             query += ` AND c.status = 'active'`;
         }
+        // admin - без додаткових фільтрів, бачить все
 
         query += ` ORDER BY c.created_at DESC`;
 
-        console.log('[v0] Competitions query:', query);
-        console.log('[v0] Competitions params:', params);
-        console.log('[v0] User role:', userRole, 'userId:', userId);
-
+        console.log('[v0] Executing query:', query);
+        console.log('[v0] With params:', params);
+        
         const result = await pool.query(query, params);
         
-        console.log('[v0] Competitions found:', result.rows.length);
-        console.log('[v0] Competition statuses:', result.rows.map(c => ({ id: c.id, title: c.title.substring(0, 30), status: c.status, created_by: c.created_by })));
+        console.log('[v0] Query result count:', result.rows.length);
 
         res.status(200).json({
             success: true,
             competitions: result.rows
         });
     } catch (error) {
-        console.error('Помилка отримання конкурсів:', error);
+        console.error('[v0] Помилка отримання конкурсів:', error.message);
+        console.error('[v0] Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Внутрішня помилка сервера'
