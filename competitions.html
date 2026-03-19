@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | Єдина платформа конкурсів України</title>
-    <meta name="description" content="Особистий кабінет користувача Єдиної платформи конкурсів України">
+    <title>Конкурси | Єдина платформа конкурсів України</title>
+    <meta name="description" content="Список конкурсів Єдиної платформи конкурсів України">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/competitions.css">
 </head>
 
 <body>
@@ -18,6 +18,9 @@
         <div class="loading-spinner"></div>
         <div class="loading-text">Завантаження...</div>
     </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
     <!-- Dashboard Layout -->
     <div class="dashboard-layout">
@@ -44,13 +47,39 @@
 
             <!-- Sidebar Navigation -->
             <nav class="sidebar-nav" id="sidebarNav">
-                <!-- Dynamic menu will be rendered here -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Головне</div>
+                    <a href="/dashboard.html" class="nav-item">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        <span>Головна</span>
+                    </a>
+                    <a href="/competitions.html" class="nav-item active">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+                            <path d="M4 22h16"></path>
+                            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+                            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+                        </svg>
+                        <span>Конкурси</span>
+                    </a>
+                </div>
             </nav>
 
             <!-- Sidebar Footer / User -->
             <div class="sidebar-footer">
                 <div class="sidebar-user" id="sidebarUser">
-                    <!-- User info will be rendered here -->
+                    <div class="user-avatar">UK</div>
+                    <div class="user-info">
+                        <div class="user-name">Завантаження...</div>
+                        <div class="user-role">...</div>
+                    </div>
                 </div>
             </div>
         </aside>
@@ -68,7 +97,7 @@
                             <line x1="3" y1="18" x2="21" y2="18"></line>
                         </svg>
                     </button>
-                    <h1 class="page-title" id="pageTitle">Головна</h1>
+                    <h1 class="page-title">Конкурси</h1>
                 </div>
                 <div class="topbar-right">
                     <button class="topbar-btn" aria-label="Пошук">
@@ -100,14 +129,40 @@
 
             <!-- Page Content -->
             <main class="page-content">
-                <div class="dashboard-grid" id="dashboardGrid">
-                    <!-- Dynamic dashboard content will be rendered here -->
+                <!-- Page Header -->
+                <div class="page-header">
+                    <div class="page-header-left">
+                        <h1>Конкурси</h1>
+                        <p>Перегляд та управління конкурсами платформи</p>
+                    </div>
+                    <div class="page-header-actions" id="headerActions">
+                        <!-- Dynamic actions based on role -->
+                    </div>
+                </div>
+
+                <!-- Filters Section -->
+                <div class="filters-section" id="filtersSection">
+                    <!-- Dynamic filters -->
+                </div>
+
+                <!-- Stats Bar -->
+                <div class="stats-bar" id="statsBar">
+                    <!-- Dynamic stats -->
+                </div>
+
+                <!-- Competitions Grid -->
+                <div class="competitions-grid" id="competitionsGrid">
+                    <!-- Dynamic competitions cards -->
+                    <div class="competitions-loading">
+                        <div class="loading-spinner"></div>
+                        <p>Завантаження конкурсів...</p>
+                    </div>
                 </div>
             </main>
         </div>
     </div>
 
-    <script src="/js/dashboard.js"></script>
+    <script src="/js/competitions.js"></script>
 </body>
 
 </html>
