@@ -280,7 +280,7 @@ app.post('/api/auth/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Будь ласка, введіть email та пароль'
+                message: '��удь ласка, введіть email та пароль'
             });
         }
 
@@ -814,31 +814,20 @@ app.put('/api/users/:userId/role', authenticateToken, requireRole(['admin']), as
 app.get('/api/competitions', authenticateToken, async (req, res) => {
     try {
         const { subject, level, status, search } = req.query;
-        const userRole = req.user.role;
-        const userId = req.user.userId;
-        
-        console.log('[v0] GET /api/competitions - userRole:', userRole, 'userId:', userId);
 
-        // MOCK MODE
+        // MOCK MODE - без бази даних
         if (MOCK_MODE) {
             let filteredCompetitions = [...mockCompetitions];
             
-            // Фільтр по предмету
             if (subject && subject !== 'all') {
                 filteredCompetitions = filteredCompetitions.filter(c => c.subject === subject);
             }
-            
-            // Фільтр по рівню
             if (level && level !== 'all') {
                 filteredCompetitions = filteredCompetitions.filter(c => c.level === level);
             }
-            
-            // Фільтр по статусу
             if (status && status !== 'all') {
                 filteredCompetitions = filteredCompetitions.filter(c => c.status === status);
             }
-            
-            // Пошук по назві
             if (search) {
                 const searchLower = search.toLowerCase();
                 filteredCompetitions = filteredCompetitions.filter(c => 
@@ -847,37 +836,17 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
                 );
             }
             
-            // Адміністратор бачить всі конкурси
-            // Для teacher показуємо свої або активні
-            if (userRole === 'teacher') {
-                filteredCompetitions = filteredCompetitions.filter(c => c.created_by === userId || c.status === 'active');
-            }
-            
-            // Для student показуємо тільки активні
-            if (userRole === 'student') {
-                filteredCompetitions = filteredCompetitions.filter(c => c.status === 'active');
-            }
-            
             return res.status(200).json({
                 success: true,
                 competitions: filteredCompetitions
             });
         }
 
-        // Спочатку перевіримо чи існує таблиця competition_applications
-        let applicationsSubquery = '0';
-        try {
-            await pool.query('SELECT 1 FROM competition_applications LIMIT 1');
-            applicationsSubquery = '(SELECT COUNT(*) FROM competition_applications WHERE competition_id = c.id)';
-        } catch (e) {
-            console.log('[v0] Table competition_applications does not exist, using 0');
-        }
-        
+        // РЕЖИМ З БАЗОЮ ДАНИХ - простий запит БЕЗ фільтрації по ролях
         let query = `
             SELECT c.*, 
                    u.first_name as creator_first_name, 
-                   u.last_name as creator_last_name,
-                   ${applicationsSubquery} as applications_count
+                   u.last_name as creator_last_name
             FROM competitions c
             LEFT JOIN users u ON c.created_by = u.id
             WHERE 1=1
@@ -885,74 +854,43 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         const params = [];
         let paramIndex = 1;
 
-        // Фільтр по предмету
         if (subject && subject !== 'all') {
             query += ` AND c.subject = $${paramIndex}`;
             params.push(subject);
             paramIndex++;
         }
 
-        // Фільтр по рівню
         if (level && level !== 'all') {
             query += ` AND c.level = $${paramIndex}`;
             params.push(level);
             paramIndex++;
         }
 
-        // Фільтр по статусу
         if (status && status !== 'all') {
             query += ` AND c.status = $${paramIndex}`;
             params.push(status);
             paramIndex++;
         }
 
-        // Пошук по назві
         if (search) {
             query += ` AND (c.title ILIKE $${paramIndex} OR c.description ILIKE $${paramIndex})`;
             params.push(`%${search}%`);
             paramIndex++;
         }
 
-        // Фільтрація по ролях:
-        // - admin бачить ВСІ конкурси
-        // - teacher бачить свої конкурси + активні
-        // - student бачить тільки активні
-        if (userRole === 'teacher') {
-            query += ` AND (c.created_by = $${paramIndex} OR c.status = 'active')`;
-            params.push(userId);
-            paramIndex++;
-        } else if (userRole === 'student') {
-            query += ` AND c.status = 'active'`;
-        }
-        // admin - без додаткових фільтрів, бачить все
+        query += ` ORDER BY c.id DESC`;
 
-        query += ` ORDER BY c.created_at DESC`;
-
-        console.log('[v0] Executing query:', query);
-        console.log('[v0] With params:', params);
-        
         const result = await pool.query(query, params);
-        
-        console.log('[v0] Query result count:', result.rows.length);
 
         res.status(200).json({
             success: true,
             competitions: result.rows
         });
     } catch (error) {
-        console.error('[v0] Помилка отримання конкурсів:', error.message);
-        console.error('[v0] Error stack:', error.stack);
+        console.error('Помилка отримання конкурсів:', error);
         res.status(500).json({
             success: false,
-            message: 'Внутрішня помилка сервера'
-        });
-    }
-});
-    } catch (error) {
-        console.error('Помилка отримання кон��урсів:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Внутрішня помилка сервера'
+            message: 'Внутрішня помилка сервера: ' + error.message
         });
     }
 });
@@ -965,11 +903,26 @@ app.get('/api/competitions/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const competition = mockCompetitions.find(c => c.id === parseInt(id));
+            if (!competition) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Конкурс не знайдено'
+                });
+            }
+            return res.status(200).json({
+                success: true,
+                competition
+            });
+        }
+
         const result = await pool.query(
             `SELECT c.*, 
                     u.first_name as creator_first_name, 
                     u.last_name as creator_last_name,
-                    (SELECT COUNT(*) FROM competition_applications WHERE competition_id = c.id) as applications_count
+                    0 as applications_count
              FROM competitions c
              LEFT JOIN users u ON c.created_by = u.id
              WHERE c.id = $1`,
