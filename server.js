@@ -315,8 +315,9 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'auth.html'));
 });
 
-// Маршрут для dashboard (заглушка)
-app.get('/dashboard.html', authenticateToken, (req, res) => {
+// Маршрут для dashboard
+// Перевірка авторизації виконується на клієнтській стороні через JavaScript
+app.get('/dashboard.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
