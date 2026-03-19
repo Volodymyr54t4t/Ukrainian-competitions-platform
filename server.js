@@ -292,6 +292,39 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const mockUser = mockUsers.find(u => u.email === email.toLowerCase());
+            
+            if (!mockUser) {
+                return res.status(401).json({ success: false, message: 'Невірний email або пароль' });
+            }
+            
+            // У mock режимі приймаємо пароль "password123" для всіх
+            if (password !== 'password123') {
+                return res.status(401).json({ success: false, message: 'Невірний email або пароль' });
+            }
+            
+            const mockRole = mockRoles.find(r => r.id === mockUser.role_id);
+            const token = jwt.sign({ userId: mockUser.id, email: mockUser.email, role: mockUser.role, roleId: mockUser.role_id }, JWT_SECRET, { expiresIn: '24h' });
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Авторизація успішна',
+                token,
+                user: {
+                    id: mockUser.id,
+                    first_name: mockUser.first_name,
+                    last_name: mockUser.last_name,
+                    email: mockUser.email,
+                    role: mockUser.role,
+                    role_id: mockUser.role_id,
+                    role_display_name: mockRole?.display_name || 'Користувач',
+                    permissions: mockPermissions[mockUser.role_id] || []
+                }
+            });
+        }
+
         // Пошук користувача в базі з RBAC даними
         const result = await pool.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, u.password_hash, u.role, u.role_id,
