@@ -315,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Якщо користувач вже авторизований, редірект на dashboard
     const token = localStorage.getItem('authToken');
     if (token) {
-        // Перевірка валідності токена
+        // Перевірка валідності токена (опціонально)
         fetch(`${API_URL}/api/auth/me`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                window.location.replace('/dashboard.html');
+                window.location.href = '/dashboard.html';
             } else {
                 // Токен невалідний, видаляємо
                 localStorage.removeItem('authToken');

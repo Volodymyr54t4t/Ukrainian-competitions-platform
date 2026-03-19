@@ -310,28 +310,14 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
 });
 
-// Маршрут для сторінки авторизації
-app.get('/auth', (req, res) => {
-    res.sendFile(path.join(__dirname, 'auth.html'));
-});
-
-app.get('/auth.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'auth.html'));
-});
-
-// Маршрут для dashboard
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-app.get('/dashboard.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
-
-// Головна сторінка - редірект в залежності від авторизації
-// Перевірка авторизації виконується на клієнтській стороні
+// Маршрут для головної сторінки авторизації
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'auth.html'));
+});
+
+// Маршрут для dashboard (заглушка)
+app.get('/dashboard.html', authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 // Запуск сервера
