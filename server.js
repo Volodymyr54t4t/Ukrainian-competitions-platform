@@ -310,14 +310,201 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
     }
 });
 
+/**
+ * API: Отримання інформації про користувача з permissions (RBAC)
+ * GET /api/me
+ */
+app.get('/api/me', authenticateToken, async (req, res) => {
+    try {
+        // Отримуємо користувача з роллю
+        const userResult = await pool.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email, 
+                    COALESCE(r.name, 'student') as role, u.created_at
+             FROM users u
+             LEFT JOIN roles r ON u.role_id = r.id
+             WHERE u.id = $1`,
+            [req.user.userId]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Користувача не знайдено'
+            });
+        }
+
+        const user = userResult.rows[0];
+
+        // Отримуємо permissions для ролі користувача
+        const permissionsResult = await pool.query(
+            `SELECT p.name 
+             FROM permissions p
+             JOIN role_permissions rp ON p.id = rp.permission_id
+             JOIN roles r ON rp.role_id = r.id
+             WHERE r.name = $1`,
+            [user.role]
+        );
+
+        const permissions = permissionsResult.rows.map(row => row.name);
+
+        res.status(200).json({
+            success: true,
+            user: {
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                email: user.email,
+                role: user.role,
+                permissions: permissions,
+                created_at: user.created_at
+            }
+        });
+
+    } catch (error) {
+        console.error('Помилка отримання даних користувача:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * Middleware: Перевірка ролі admin
+ */
+const requireAdmin = async (req, res, next) => {
+    try {
+        const result = await pool.query(
+            `SELECT COALESCE(r.name, 'student') as role
+             FROM users u
+             LEFT JOIN roles r ON u.role_id = r.id
+             WHERE u.id = $1`,
+            [req.user.userId]
+        );
+
+        if (result.rows.length === 0 || result.rows[0].role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Доступ заборонено. Потрібні права адміністратора.'
+            });
+        }
+
+        next();
+    } catch (error) {
+        console.error('Помилка перевірки ролі:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+};
+
+/**
+ * API: Отримання списку всіх користувачів (тільки для admin)
+ * GET /api/admin/users
+ */
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email, 
+                    COALESCE(r.name, 'student') as role, u.created_at
+             FROM users u
+             LEFT JOIN roles r ON u.role_id = r.id
+             ORDER BY u.created_at DESC`
+        );
+
+        res.status(200).json({
+            success: true,
+            users: result.rows
+        });
+
+    } catch (error) {
+        console.error('Помилка отримання списку користувачів:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Зміна ролі користувача (тільки для admin)
+ * PATCH /api/admin/users/:id/role
+ */
+app.patch('/api/admin/users/:id/role', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id);
+        const { role } = req.body;
+
+        // Валідація ролі
+        const validRoles = ['student', 'teacher', 'methodist', 'admin', 'judge'];
+        if (!validRoles.includes(role)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Невалідна роль'
+            });
+        }
+
+        // Отримуємо ID ролі
+        const roleResult = await pool.query(
+            'SELECT id FROM roles WHERE name = $1',
+            [role]
+        );
+
+        if (roleResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Роль не знайдено в базі даних'
+            });
+        }
+
+        const roleId = roleResult.rows[0].id;
+
+        // Оновлюємо роль користувача
+        const updateResult = await pool.query(
+            `UPDATE users SET role_id = $1 WHERE id = $2
+             RETURNING id, first_name, last_name, email`,
+            [roleId, userId]
+        );
+
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Користувача не знайдено'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Роль успішно змінено',
+            user: {
+                ...updateResult.rows[0],
+                role: role
+            }
+        });
+
+    } catch (error) {
+        console.error('Помилка зміни ролі:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
 // Маршрут для головної сторінки авторизації
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'auth.html'));
 });
 
-// Маршрут для dashboard (заглушка)
-app.get('/dashboard.html', authenticateToken, (req, res) => {
+// Маршрут для dashboard
+app.get('/dashboard.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Маршрут для RBAC тестування
+app.get('/rbac-test.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'rbac-test.html'));
 });
 
 // Запуск сервера
