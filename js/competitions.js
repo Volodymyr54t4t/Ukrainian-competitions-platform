@@ -77,6 +77,10 @@ const ICONS = {
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>',
     folder:
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
+    "plus-circle":
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
+    "x-circle":
+        '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
 };
 
 // ==================== ІНІЦІАЛІЗАЦІЯ ====================
@@ -443,10 +447,10 @@ function renderCompetitionCard(competition, role) {
                 <h3 class="card-title">${escapeHtml(competition.title)}</h3>
                 <p class="card-description">${escapeHtml(competition.description || "Опис відсутній")}</p>
                 <div class="card-meta">
-                    ${competition.section ? `
-                    <div class="meta-item">
+                    ${competition.sections && competition.sections.length > 0 ? `
+                    <div class="meta-item sections-meta">
                         ${ICONS.folder}
-                        <span>Секція: <strong>${escapeHtml(competition.section)}</strong></span>
+                        <span>Секції: <strong>${competition.sections.map(s => escapeHtml(s)).join(', ')}</strong></span>
                     </div>
                     ` : ''}
                     <div class="meta-item">
@@ -614,9 +618,17 @@ function openCreateModal() {
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Секція</label>
-                            <input type="text" class="form-control" name="section" placeholder="Наприклад: Алгебра, Механіка, Програмування...">
-                            <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Вкажіть секцію або напрямок конкурсу (необов'язково)</small>
+                            <label>Секції</label>
+                            <div class="sections-container" id="createSectionsContainer">
+                                <div class="sections-list" id="createSectionsList"></div>
+                                <div class="section-input-row">
+                                    <input type="text" class="form-control section-input" id="createSectionInput" placeholder="Введіть назву секції...">
+                                    <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('create')">
+                                        ${ICONS["plus-circle"]} Додати
+                                    </button>
+                                </div>
+                            </div>
+                            <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте одну або кілька секцій (необов'язково)</small>
                         </div>
                         <div class="form-group">
                             <label>Максимальна кількість учасників</label>
@@ -633,6 +645,17 @@ function openCreateModal() {
     `;
 
     document.body.insertAdjacentHTML("beforeend", modalHTML);
+    
+    // Скидаємо секції для створення
+    resetSections('create');
+    
+    // Додаємо Enter для додавання секції
+    document.getElementById('createSectionInput')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addSection('create');
+        }
+    });
 }
 
 function viewCompetition(id) {
@@ -669,11 +692,11 @@ function viewCompetition(id) {
                         </div>
                     </div>
                     
-                    ${competition.section ? `
+                    ${competition.sections && competition.sections.length > 0 ? `
                     <div class="detail-section">
-                        <h4>Секція</h4>
-                        <div class="detail-content">
-                            ${escapeHtml(competition.section)}
+                        <h4>Секції</h4>
+                        <div class="sections-badges">
+                            ${competition.sections.map(s => `<span class="section-badge">${escapeHtml(s)}</span>`).join('')}
                         </div>
                     </div>
                     ` : ''}
@@ -788,9 +811,17 @@ function editCompetition(id) {
   </div>
   </div>
   <div class="form-group">
-  <label>Секція</label>
-  <input type="text" class="form-control" name="section" value="${escapeHtml(competition.section || "")}" placeholder="Наприклад: Алгебра, Механіка, Програмування...">
-  <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Вкажіть секцію або напрямок конкурсу (необов'язково)</small>
+  <label>Секції</label>
+  <div class="sections-container" id="editSectionsContainer">
+      <div class="sections-list" id="editSectionsList"></div>
+      <div class="section-input-row">
+          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву секції...">
+          <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('edit')">
+              ${ICONS["plus-circle"]} Додати
+          </button>
+      </div>
+  </div>
+  <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте одну або кілька секцій (необов'язково)</small>
   </div>
   <div class="form-row">
   <div class="form-group">
@@ -813,6 +844,21 @@ function editCompetition(id) {
     `;
 
     document.body.insertAdjacentHTML("beforeend", modalHTML);
+    
+    // Ініціалізуємо секції для редагування
+    if (competition.sections && competition.sections.length > 0) {
+        competition.sections.forEach(section => {
+            addSectionTag('edit', section);
+        });
+    }
+    
+    // Додаємо Enter для додавання секції
+    document.getElementById('editSectionInput')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addSection('edit');
+        }
+    });
 }
 
 function closeModal(modalId) {
@@ -820,6 +866,13 @@ function closeModal(modalId) {
     if (modal) {
         modal.classList.remove("active");
         setTimeout(() => modal.remove(), 300);
+        
+        // Скидаємо секції при закритті модального вікна
+        if (modalId === 'createModal') {
+            resetSections('create');
+        } else if (modalId === 'editModal') {
+            resetSections('edit');
+        }
     }
 }
 
@@ -829,12 +882,79 @@ function closeModalOnOverlay(event, modalId) {
     }
 }
 
+// ==================== СЕКЦІЇ ====================
+let createSections = [];
+let editSections = [];
+
+function addSection(mode) {
+    const inputId = mode === 'create' ? 'createSectionInput' : 'editSectionInput';
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const value = input.value.trim();
+    if (!value) return;
+    
+    // Перевіряємо чи секція вже існує
+    const sections = mode === 'create' ? createSections : editSections;
+    if (sections.includes(value)) {
+        showToast('Ця секція вже додана', 'error');
+        return;
+    }
+    
+    addSectionTag(mode, value);
+    input.value = '';
+    input.focus();
+}
+
+function addSectionTag(mode, value) {
+    const listId = mode === 'create' ? 'createSectionsList' : 'editSectionsList';
+    const list = document.getElementById(listId);
+    if (!list) return;
+    
+    const sections = mode === 'create' ? createSections : editSections;
+    sections.push(value);
+    
+    const tag = document.createElement('span');
+    tag.className = 'section-tag';
+    tag.innerHTML = `
+        ${escapeHtml(value)}
+        <button type="button" class="section-tag-remove" onclick="removeSection('${mode}', '${escapeHtml(value).replace(/'/g, "\\'")}', this)">
+            ${ICONS["x-circle"]}
+        </button>
+    `;
+    list.appendChild(tag);
+}
+
+function removeSection(mode, value, button) {
+    const sections = mode === 'create' ? createSections : editSections;
+    const index = sections.indexOf(value);
+    if (index > -1) {
+        sections.splice(index, 1);
+    }
+    button.parentElement.remove();
+}
+
+function getSections(mode) {
+    return mode === 'create' ? [...createSections] : [...editSections];
+}
+
+function resetSections(mode) {
+    if (mode === 'create') {
+        createSections = [];
+    } else {
+        editSections = [];
+    }
+}
+
 async function submitCreateForm() {
     const form = document.getElementById("createCompetitionForm");
     if (!form) return;
 
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    
+    // Додаємо секції
+    data.sections = getSections('create');
 
     if (
         !data.title ||
@@ -848,6 +968,7 @@ async function submitCreateForm() {
     }
 
     await createCompetition(data);
+    resetSections('create');
 }
 
 async function submitEditForm() {
@@ -857,6 +978,10 @@ async function submitEditForm() {
     const competitionId = form.dataset.id;
     const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
+    
+    // Додаємо секції
+    data.sections = getSections('edit');
+    
     const token = localStorage.getItem("authToken");
 
     try {
