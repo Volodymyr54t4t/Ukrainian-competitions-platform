@@ -447,6 +447,10 @@ function renderCompetitionCard(competition, role) {
                 <h3 class="card-title">${escapeHtml(competition.title)}</h3>
                 <p class="card-description">${escapeHtml(competition.description || "Опис відсутній")}</p>
                 <div class="card-meta">
+                    ${(() => {
+                        console.log("[v0] Competition sections:", competition.id, competition.sections);
+                        return '';
+                    })()}
                     ${competition.sections && competition.sections.length > 0 ? `
                     <div class="meta-item sections-meta">
                         ${ICONS.folder}
@@ -815,7 +819,7 @@ function editCompetition(id) {
   <div class="sections-container" id="editSectionsContainer">
       <div class="sections-list" id="editSectionsList"></div>
       <div class="section-input-row">
-          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву секції...">
+          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву се��ції...">
           <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('edit')">
               ${ICONS["plus-circle"]} Додати
           </button>
