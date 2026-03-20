@@ -215,6 +215,7 @@ let mockCompetitions = [
     start_date: "2026-04-01",
     end_date: "2026-04-15",
     description: "Щорічна олімпіада для учнів 9-11 класів",
+    sections: ["Алгебра", "Геометрія", "Математичний аналіз"],
     created_by: 3,
     max_participants: 500,
     applications_count: 0,
@@ -229,6 +230,7 @@ let mockCompetitions = [
     start_date: "2026-05-01",
     end_date: "2026-05-10",
     description: "Регіональний конкурс з фізики",
+    sections: ["Механіка", "Оптика"],
     created_by: 3,
     max_participants: 200,
     applications_count: 0,
@@ -243,6 +245,7 @@ let mockCompetitions = [
     start_date: "2026-02-01",
     end_date: "2026-02-15",
     description: "Змагання з програмування",
+    sections: ["Алгоритми", "Структури даних", "Web-програмування"],
     created_by: 2,
     max_participants: 300,
     applications_count: 0,
@@ -257,6 +260,7 @@ let mockCompetitions = [
     start_date: "2026-03-20",
     end_date: "2026-04-05",
     description: "Шкільний конкурс творчих робіт",
+    sections: ["Творчі роботи"],
     created_by: 2,
     max_participants: 100,
     applications_count: 0,
@@ -372,12 +376,10 @@ app.post("/api/auth/register", async (req, res) => {
         (u) => u.email === email.toLowerCase(),
       );
       if (existingMock) {
-        return res
-          .status(409)
-          .json({
-            success: false,
-            message: "Користувач з таким email вже існує",
-          });
+        return res.status(409).json({
+          success: false,
+          message: "Користувач з таким email вже існує",
+        });
       }
 
       const newId = mockUsers.length + 1;
@@ -489,7 +491,7 @@ app.post("/api/auth/register", async (req, res) => {
     console.error("Помилка реєстрації:", error);
     res.status(500).json({
       success: false,
-      message: "Внутрішня помилка сервера",
+      message: "Внутрішня помилка серв��ра",
     });
   }
 });
@@ -1247,6 +1249,7 @@ app.post(
         end_date,
         max_participants,
         status,
+        sections,
       } = req.body;
       const userId = req.user.userId;
 
@@ -1256,6 +1259,13 @@ app.post(
           message: "Заповніть всі обов'язкові поля",
         });
       }
+
+      // Обробка секцій - перетворюємо в масив якщо це рядок
+      const sectionsArray = Array.isArray(sections)
+        ? sections
+        : sections
+          ? [sections]
+          : [];
 
       // MOCK MODE
       if (MOCK_MODE) {
@@ -1268,6 +1278,7 @@ app.post(
           start_date,
           end_date,
           max_participants: max_participants || 100,
+          sections: sectionsArray,
           created_by: userId,
           status: status || "draft",
           applications_count: 0,
@@ -1283,8 +1294,8 @@ app.post(
       }
 
       const result = await pool.query(
-        `INSERT INTO competitions (title, description, subject, level, start_date, end_date, max_participants, created_by, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `INSERT INTO competitions (title, description, subject, level, start_date, end_date, max_participants, created_by, status, sections)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING *`,
         [
           title,
@@ -1296,6 +1307,7 @@ app.post(
           max_participants || 100,
           userId,
           status || "draft",
+          sectionsArray,
         ],
       );
 
@@ -1334,7 +1346,18 @@ app.put(
         end_date,
         max_participants,
         status,
+        sections,
       } = req.body;
+
+      // Обробка секцій - перетворюємо в масив якщо це рядок
+      const sectionsArray =
+        sections !== undefined
+          ? Array.isArray(sections)
+            ? sections
+            : sections
+              ? [sections]
+              : []
+          : undefined;
 
       const result = await pool.query(
         `UPDATE competitions 
@@ -1346,8 +1369,9 @@ app.put(
                  end_date = COALESCE($6, end_date),
                  max_participants = COALESCE($7, max_participants),
                  status = COALESCE($8, status),
+                 sections = COALESCE($9, sections),
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $9
+             WHERE id = $10
              RETURNING *`,
         [
           title,
@@ -1358,6 +1382,7 @@ app.put(
           end_date,
           max_participants,
           status,
+          sectionsArray,
           id,
         ],
       );
