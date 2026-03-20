@@ -102,9 +102,13 @@ async function loadCurrentUser() {
     }
 
     const data = await response.json();
+    console.log('[v0] Auth/me response:', data);
     if (data.success) {
         currentUser = data.user;
+        console.log('[v0] Current user:', currentUser);
+        console.log('[v0] User role object:', currentUser.role);
         userPermissions = data.user.permissions?.map(p => p.name) || [];
+        console.log('[v0] User permissions:', userPermissions);
     } else {
         throw new Error(data.message);
     }
@@ -127,9 +131,12 @@ async function loadCompetitions() {
         });
 
         const data = await response.json();
+        console.log('[v0] Competitions API response:', data);
+        console.log('[v0] Competitions count:', data.competitions?.length);
         if (data.success) {
             competitions = data.competitions;
             const roleName = currentUser.role?.name || currentUser.role || 'student';
+            console.log('[v0] User role for rendering:', roleName);
             renderCompetitions(roleName);
         } else {
             showToast('Помилка завантаження конкурсів', 'error');
