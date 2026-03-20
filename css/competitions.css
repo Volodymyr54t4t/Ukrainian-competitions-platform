@@ -363,6 +363,11 @@
     width: 16px;
     height: 16px;
     color: var(--gray-400);
+    flex-shrink: 0;
+}
+
+.meta-item:first-child svg {
+    color: var(--primary-blue);
 }
 
 .meta-item strong {

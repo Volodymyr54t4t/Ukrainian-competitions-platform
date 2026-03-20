@@ -75,6 +75,8 @@ const ICONS = {
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>',
     "clipboard-check":
         '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>',
+    folder:
+        '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>',
 };
 
 // ==================== ІНІЦІАЛІЗАЦІЯ ====================
@@ -441,6 +443,12 @@ function renderCompetitionCard(competition, role) {
                 <h3 class="card-title">${escapeHtml(competition.title)}</h3>
                 <p class="card-description">${escapeHtml(competition.description || "Опис відсутній")}</p>
                 <div class="card-meta">
+                    ${competition.section ? `
+                    <div class="meta-item">
+                        ${ICONS.folder}
+                        <span>Секція: <strong>${escapeHtml(competition.section)}</strong></span>
+                    </div>
+                    ` : ''}
                     <div class="meta-item">
                         ${ICONS.calendar}
                         <span><strong>${startDate}</strong> - <strong>${endDate}</strong></span>
@@ -606,6 +614,11 @@ function openCreateModal() {
                             </div>
                         </div>
                         <div class="form-group">
+                            <label>Секція</label>
+                            <input type="text" class="form-control" name="section" placeholder="Наприклад: Алгебра, Механіка, Програмування...">
+                            <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Вкажіть секцію або напрямок конкурсу (необов'язково)</small>
+                        </div>
+                        <div class="form-group">
                             <label>Максимальна кількість учасників</label>
                             <input type="number" class="form-control" name="max_participants" value="100" min="1">
                         </div>
@@ -656,6 +669,15 @@ function viewCompetition(id) {
                         </div>
                     </div>
                     
+                    ${competition.section ? `
+                    <div class="detail-section">
+                        <h4>Секція</h4>
+                        <div class="detail-content">
+                            ${escapeHtml(competition.section)}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
                     <div class="detail-section">
                         <h4>Деталі</h4>
                         <div class="detail-grid">
@@ -683,7 +705,7 @@ function viewCompetition(id) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal('viewModal')">Закрити</button>
+                    <button class="btn btn-secondary" onclick="closeModal('viewModal')">Закр��ти</button>
                     ${currentUser.role?.name === "student" &&
             competition.status === "active"
             ? `
@@ -755,22 +777,27 @@ function editCompetition(id) {
                                 <select class="form-control" name="level" required>${levelOptions}</select>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Дата початку <span>*</span></label>
-                                <input type="date" class="form-control" name="start_date" required value="${competition.start_date?.split("T")[0] || ""}">
-                            </div>
-                            <div class="form-group">
-                                <label>Дата завершення <span>*</span></label>
-                                <input type="date" class="form-control" name="end_date" required value="${competition.end_date?.split("T")[0] || ""}">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Максимальна кількість учасників</label>
-                                <input type="number" class="form-control" name="max_participants" value="${competition.max_participants || 100}" min="1">
-                            </div>
-                            <div class="form-group">
+<div class="form-row">
+  <div class="form-group">
+  <label>Дата початку <span>*</span></label>
+  <input type="date" class="form-control" name="start_date" required value="${competition.start_date?.split("T")[0] || ""}">
+  </div>
+  <div class="form-group">
+  <label>Дата завершення <span>*</span></label>
+  <input type="date" class="form-control" name="end_date" required value="${competition.end_date?.split("T")[0] || ""}">
+  </div>
+  </div>
+  <div class="form-group">
+  <label>Секція</label>
+  <input type="text" class="form-control" name="section" value="${escapeHtml(competition.section || "")}" placeholder="Наприклад: Алгебра, Механіка, Програмування...">
+  <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Вкажіть секцію або напрямок конкурсу (необов'язково)</small>
+  </div>
+  <div class="form-row">
+  <div class="form-group">
+  <label>Максимальна кількість учасників</label>
+  <input type="number" class="form-control" name="max_participants" value="${competition.max_participants || 100}" min="1">
+  </div>
+  <div class="form-group">
                                 <label>Статус</label>
                                 <select class="form-control" name="status">${statusOptions}</select>
                             </div>

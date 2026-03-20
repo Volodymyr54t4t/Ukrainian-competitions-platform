@@ -215,6 +215,7 @@ let mockCompetitions = [
         start_date: "2026-04-01",
         end_date: "2026-04-15",
         description: "Щорічна олімпіада для учнів 9-11 класів",
+        section: "Алгебра та геометрія",
         created_by: 3,
         max_participants: 500,
         applications_count: 0,
@@ -229,6 +230,7 @@ let mockCompetitions = [
         start_date: "2026-05-01",
         end_date: "2026-05-10",
         description: "Регіональний конкурс з фізики",
+        section: "Механіка та оптика",
         created_by: 3,
         max_participants: 200,
         applications_count: 0,
@@ -243,6 +245,7 @@ let mockCompetitions = [
         start_date: "2026-02-01",
         end_date: "2026-02-15",
         description: "Змагання з програмування",
+        section: "Алгоритми та структури даних",
         created_by: 2,
         max_participants: 300,
         applications_count: 0,
@@ -257,6 +260,7 @@ let mockCompetitions = [
         start_date: "2026-03-20",
         end_date: "2026-04-05",
         description: "Шкільний конкурс творчих робіт",
+        section: "Творчі роботи",
         created_by: 2,
         max_participants: 100,
         applications_count: 0,
@@ -489,7 +493,7 @@ app.post("/api/auth/register", async (req, res) => {
         console.error("Помилка реєстрації:", error);
         res.status(500).json({
             success: false,
-            message: "Внутрішня помилка сервера",
+            message: "Внутрішня помилка серв��ра",
         });
     }
 });
@@ -1247,6 +1251,7 @@ app.post(
                 end_date,
                 max_participants,
                 status,
+                section,
             } = req.body;
             const userId = req.user.userId;
 
@@ -1268,6 +1273,7 @@ app.post(
                     start_date,
                     end_date,
                     max_participants: max_participants || 100,
+                    section: section || null,
                     created_by: userId,
                     status: status || "draft",
                     applications_count: 0,
@@ -1283,8 +1289,8 @@ app.post(
             }
 
             const result = await pool.query(
-                `INSERT INTO competitions (title, description, subject, level, start_date, end_date, max_participants, created_by, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `INSERT INTO competitions (title, description, subject, level, start_date, end_date, max_participants, created_by, status, section)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
              RETURNING *`,
                 [
                     title,
@@ -1296,6 +1302,7 @@ app.post(
                     max_participants || 100,
                     userId,
                     status || "draft",
+                    section || null,
                 ],
             );
 
@@ -1334,6 +1341,7 @@ app.put(
                 end_date,
                 max_participants,
                 status,
+                section,
             } = req.body;
 
             const result = await pool.query(
@@ -1346,8 +1354,9 @@ app.put(
                  end_date = COALESCE($6, end_date),
                  max_participants = COALESCE($7, max_participants),
                  status = COALESCE($8, status),
+                 section = COALESCE($9, section),
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $9
+             WHERE id = $10
              RETURNING *`,
                 [
                     title,
@@ -1358,6 +1367,7 @@ app.put(
                     end_date,
                     max_participants,
                     status,
+                    section,
                     id,
                 ],
             );
