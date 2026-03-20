@@ -447,14 +447,10 @@ function renderCompetitionCard(competition, role) {
                 <h3 class="card-title">${escapeHtml(competition.title)}</h3>
                 <p class="card-description">${escapeHtml(competition.description || "Опис відсутній")}</p>
                 <div class="card-meta">
-                    ${(() => {
-                        console.log("[v0] Competition sections:", competition.id, competition.sections);
-                        return '';
-                    })()}
                     ${competition.sections && competition.sections.length > 0 ? `
                     <div class="meta-item sections-meta">
                         ${ICONS.folder}
-                        <span>Секції: <strong>${competition.sections.map(s => escapeHtml(s)).join(', ')}</strong></span>
+                        <span>Секції: <strong>${competition.sections.map(s => typeof s === 'object' ? escapeHtml(s.name) : escapeHtml(s)).join(', ')}</strong></span>
                     </div>
                     ` : ''}
                     <div class="meta-item">
@@ -622,17 +618,17 @@ function openCreateModal() {
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Секції</label>
-                            <div class="sections-container" id="createSectionsContainer">
-                                <div class="sections-list" id="createSectionsList"></div>
-                                <div class="section-input-row">
-                                    <input type="text" class="form-control section-input" id="createSectionInput" placeholder="Введіть назву секції...">
-                                    <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('create')">
-                                        ${ICONS["plus-circle"]} Додати
+                            <label>Секції та напрямки</label>
+                            <div class="sections-hierarchy-container" id="createSectionsContainer">
+                                <div class="sections-hierarchy-list" id="createSectionsList"></div>
+                                <div class="add-section-row">
+                                    <input type="text" class="form-control" id="createSectionInput" placeholder="Назва секції...">
+                                    <button type="button" class="btn btn-secondary" onclick="addSectionWithDirections('create')">
+                                        ${ICONS["plus-circle"]} Додати секцію
                                     </button>
                                 </div>
                             </div>
-                            <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте одну або кілька секцій (необов'язково)</small>
+                            <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте секції, а потім напрямки до кожної секції</small>
                         </div>
                         <div class="form-group">
                             <label>Максимальна кількість учасників</label>
@@ -657,7 +653,7 @@ function openCreateModal() {
     document.getElementById('createSectionInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addSection('create');
+            addSectionWithDirections('create');
         }
     });
 }
@@ -698,9 +694,21 @@ function viewCompetition(id) {
                     
                     ${competition.sections && competition.sections.length > 0 ? `
                     <div class="detail-section">
-                        <h4>Секції</h4>
-                        <div class="sections-badges">
-                            ${competition.sections.map(s => `<span class="section-badge">${escapeHtml(s)}</span>`).join('')}
+                        <h4>Секції та напрямки</h4>
+                        <div class="sections-hierarchy">
+                            ${competition.sections.map(s => {
+                                const section = typeof s === 'object' ? s : { name: s, directions: [] };
+                                return `
+                                    <div class="section-item-view">
+                                        <div class="section-name-view">${escapeHtml(section.name)}</div>
+                                        ${section.directions && section.directions.length > 0 ? `
+                                            <div class="directions-list-view">
+                                                ${section.directions.map(d => `<span class="direction-badge">${escapeHtml(d)}</span>`).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                     ` : ''}
@@ -815,15 +823,18 @@ function editCompetition(id) {
   </div>
   </div>
   <div class="form-group">
-  <label>Секції</label>
-  <div class="sections-container" id="editSectionsContainer">
-      <div class="sections-list" id="editSectionsList"></div>
-      <div class="section-input-row">
-          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву се��ції...">
-          <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('edit')">
-              ${ICONS["plus-circle"]} Додати
+  <label>Секції та напрямки</label>
+  <div class="sections-hierarchy-container" id="editSectionsContainer">
+      <div class="sections-hierarchy-list" id="editSectionsList"></div>
+      <div class="add-section-row">
+          <input type="text" class="form-control" id="editSectionInput" placeholder="Назва секції...">
+          <button type="button" class="btn btn-secondary" onclick="addSectionWithDirections('edit')">
+              ${ICONS["plus-circle"]} Додати секцію
           </button>
       </div>
+  </div>
+  <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте секції, а потім напрямки до кожної секції</small>
+  </div>
   </div>
   <small style="color: var(--gray-500); font-size: 0.75rem; margin-top: 0.25rem; display: block;">Додайте одну або кілька секцій (необов'язково)</small>
   </div>
@@ -852,7 +863,8 @@ function editCompetition(id) {
     // Ініціалізуємо секції для редагування
     if (competition.sections && competition.sections.length > 0) {
         competition.sections.forEach(section => {
-            addSectionTag('edit', section);
+            const sectionData = typeof section === 'object' ? section : { name: section, directions: [] };
+            addSectionWithDirectionsTag('edit', sectionData.name, sectionData.directions || []);
         });
     }
     
@@ -860,7 +872,7 @@ function editCompetition(id) {
     document.getElementById('editSectionInput')?.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            addSection('edit');
+            addSectionWithDirections('edit');
         }
     });
 }
@@ -886,11 +898,13 @@ function closeModalOnOverlay(event, modalId) {
     }
 }
 
-// ==================== СЕКЦІЇ ====================
+// ==================== СЕКЦІЇ ТА НАПРЯМКИ ====================
+// Структура: [{name: "Секція", directions: ["Напрямок1", "Напрямок2"]}]
 let createSections = [];
 let editSections = [];
+let sectionCounter = 0;
 
-function addSection(mode) {
+function addSectionWithDirections(mode) {
     const inputId = mode === 'create' ? 'createSectionInput' : 'editSectionInput';
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -900,46 +914,137 @@ function addSection(mode) {
     
     // Перевіряємо чи секція вже існує
     const sections = mode === 'create' ? createSections : editSections;
-    if (sections.includes(value)) {
+    if (sections.find(s => s.name === value)) {
         showToast('Ця секція вже додана', 'error');
         return;
     }
     
-    addSectionTag(mode, value);
+    addSectionWithDirectionsTag(mode, value, []);
     input.value = '';
     input.focus();
 }
 
-function addSectionTag(mode, value) {
+function addSectionWithDirectionsTag(mode, sectionName, directions = []) {
     const listId = mode === 'create' ? 'createSectionsList' : 'editSectionsList';
     const list = document.getElementById(listId);
     if (!list) return;
     
     const sections = mode === 'create' ? createSections : editSections;
-    sections.push(value);
+    const sectionId = `section-${mode}-${sectionCounter++}`;
     
-    const tag = document.createElement('span');
-    tag.className = 'section-tag';
-    tag.innerHTML = `
-        ${escapeHtml(value)}
-        <button type="button" class="section-tag-remove" onclick="removeSection('${mode}', '${escapeHtml(value).replace(/'/g, "\\'")}', this)">
-            ${ICONS["x-circle"]}
-        </button>
+    sections.push({ name: sectionName, directions: [...directions] });
+    const sectionIndex = sections.length - 1;
+    
+    const sectionEl = document.createElement('div');
+    sectionEl.className = 'section-item';
+    sectionEl.id = sectionId;
+    sectionEl.dataset.index = sectionIndex;
+    
+    sectionEl.innerHTML = `
+        <div class="section-header">
+            <span class="section-name">${escapeHtml(sectionName)}</span>
+            <button type="button" class="section-remove-btn" onclick="removeSectionWithDirections('${mode}', ${sectionIndex}, '${sectionId}')">
+                ${ICONS["x-circle"]}
+            </button>
+        </div>
+        <div class="directions-container">
+            <div class="directions-list" id="${sectionId}-directions">
+                ${directions.map((d, i) => `
+                    <span class="direction-tag">
+                        ${escapeHtml(d)}
+                        <button type="button" class="direction-remove-btn" onclick="removeDirection('${mode}', ${sectionIndex}, ${i}, this)">
+                            ${ICONS["x-circle"]}
+                        </button>
+                    </span>
+                `).join('')}
+            </div>
+            <div class="add-direction-row">
+                <input type="text" class="form-control direction-input" placeholder="Напрямок..." onkeypress="handleDirectionKeypress(event, '${mode}', ${sectionIndex}, '${sectionId}')">
+                <button type="button" class="btn btn-sm btn-outline" onclick="addDirection('${mode}', ${sectionIndex}, '${sectionId}')">
+                    + Напрямок
+                </button>
+            </div>
+        </div>
     `;
-    list.appendChild(tag);
+    list.appendChild(sectionEl);
 }
 
-function removeSection(mode, value, button) {
+function removeSectionWithDirections(mode, index, sectionId) {
     const sections = mode === 'create' ? createSections : editSections;
-    const index = sections.indexOf(value);
-    if (index > -1) {
-        sections.splice(index, 1);
+    sections.splice(index, 1);
+    
+    // Видаляємо елемент
+    document.getElementById(sectionId)?.remove();
+    
+    // Оновлюємо індекси інших секцій
+    const listId = mode === 'create' ? 'createSectionsList' : 'editSectionsList';
+    const list = document.getElementById(listId);
+    if (list) {
+        Array.from(list.children).forEach((el, newIndex) => {
+            el.dataset.index = newIndex;
+        });
     }
+}
+
+function addDirection(mode, sectionIndex, sectionId) {
+    const sectionEl = document.getElementById(sectionId);
+    if (!sectionEl) return;
+    
+    const input = sectionEl.querySelector('.direction-input');
+    if (!input) return;
+    
+    const value = input.value.trim();
+    if (!value) return;
+    
+    const sections = mode === 'create' ? createSections : editSections;
+    const section = sections[sectionIndex];
+    if (!section) return;
+    
+    // Перевіряємо чи напрямок вже існує
+    if (section.directions.includes(value)) {
+        showToast('Цей напрямок вже додано', 'error');
+        return;
+    }
+    
+    section.directions.push(value);
+    
+    const directionsList = document.getElementById(`${sectionId}-directions`);
+    if (directionsList) {
+        const dirIndex = section.directions.length - 1;
+        const tag = document.createElement('span');
+        tag.className = 'direction-tag';
+        tag.innerHTML = `
+            ${escapeHtml(value)}
+            <button type="button" class="direction-remove-btn" onclick="removeDirection('${mode}', ${sectionIndex}, ${dirIndex}, this)">
+                ${ICONS["x-circle"]}
+            </button>
+        `;
+        directionsList.appendChild(tag);
+    }
+    
+    input.value = '';
+    input.focus();
+}
+
+function removeDirection(mode, sectionIndex, directionIndex, button) {
+    const sections = mode === 'create' ? createSections : editSections;
+    const section = sections[sectionIndex];
+    if (!section) return;
+    
+    section.directions.splice(directionIndex, 1);
     button.parentElement.remove();
 }
 
+function handleDirectionKeypress(event, mode, sectionIndex, sectionId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        addDirection(mode, sectionIndex, sectionId);
+    }
+}
+
 function getSections(mode) {
-    return mode === 'create' ? [...createSections] : [...editSections];
+    const sections = mode === 'create' ? createSections : editSections;
+    return sections.map(s => ({ name: s.name, directions: [...s.directions] }));
 }
 
 function resetSections(mode) {
