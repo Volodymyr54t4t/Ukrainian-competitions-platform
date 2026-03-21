@@ -751,7 +751,7 @@ function viewCompetition(id) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeModal('viewModal')">Закр��ти</button>
+                    <button class="btn btn-secondary" onclick="closeModal('viewModal')">Закрити</button>
                     ${
                       currentUser.role?.name === "student" &&
                       competition.status === "active"
@@ -839,7 +839,7 @@ function editCompetition(id) {
   <div class="sections-container" id="editSectionsContainer">
       <div class="sections-list" id="editSectionsList"></div>
       <div class="section-input-row">
-          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву се��ції...">
+          <input type="text" class="form-control section-input" id="editSectionInput" placeholder="Введіть назву секції...">
           <button type="button" class="btn btn-secondary btn-add-section" onclick="addSection('edit')">
               ${ICONS["plus-circle"]} Додати
           </button>

@@ -491,7 +491,7 @@ app.post("/api/auth/register", async (req, res) => {
     console.error("Помилка реєстрації:", error);
     res.status(500).json({
       success: false,
-      message: "Внутрішня помилка серв��ра",
+      message: "Внутрішня помилка сервера",
     });
   }
 });
@@ -508,7 +508,7 @@ app.post("/api/auth/login", async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "��удь ласка, введіть email та пароль",
+        message: "Будь ласка, введіть email та пароль",
       });
     }
 

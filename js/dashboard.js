@@ -308,7 +308,7 @@ const DASHBOARD_CONFIG = {
       {
         id: "create",
         label: "Створити конкурс",
-        desc: "��овий конкурс",
+        desc: "Новий конкурс",
         icon: "plus-circle",
         color: "blue",
         permission: "create_competition",
