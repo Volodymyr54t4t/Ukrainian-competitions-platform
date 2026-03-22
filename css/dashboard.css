@@ -997,6 +997,121 @@ a:hover {
   }
 }
 
+/* Tablet styles */
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .stats-card {
+    padding: 1.25rem;
+  }
+
+  .stats-card .stat-value {
+    font-size: 1.75rem;
+  }
+
+  .actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .activity-panel {
+    padding: 1.25rem;
+  }
+
+  .activity-item {
+    padding: 0.75rem;
+  }
+}
+
+/* Small tablet styles */
+@media (max-width: 576px) {
+  .topbar {
+    padding: 0 0.75rem;
+  }
+
+  .topbar h1 {
+    font-size: 1.25rem;
+  }
+
+  .page-content {
+    padding: 0.75rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-card {
+    padding: 1rem;
+  }
+
+  .stats-card .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stats-card .stat-label {
+    font-size: 0.8125rem;
+  }
+
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-card {
+    padding: 1rem;
+  }
+
+  .action-card h3 {
+    font-size: 0.9375rem;
+  }
+
+  .activity-panel {
+    padding: 1rem;
+  }
+
+  .activity-panel h3 {
+    font-size: 1.125rem;
+  }
+
+  .activity-item {
+    padding: 0.625rem;
+  }
+
+  .activity-item .activity-text {
+    font-size: 0.8125rem;
+  }
+
+  .activity-item .activity-time {
+    font-size: 0.75rem;
+  }
+
+  .profile-card {
+    padding: 1.25rem;
+  }
+
+  .profile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 1.25rem;
+  }
+
+  .profile-details h2 {
+    font-size: 1.125rem;
+  }
+
+  .profile-details p {
+    font-size: 0.8125rem;
+  }
+
+  .profile-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+}
+
 /* ==================== UTILITIES ==================== */
 .sr-only {
   position: absolute;
