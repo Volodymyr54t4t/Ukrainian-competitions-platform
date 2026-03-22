@@ -271,15 +271,20 @@ a:hover {
 
 .input-icon {
   position: absolute;
-  left: 1rem;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--gray-400);
   pointer-events: none;
   transition: color var(--transition-fast);
+  z-index: 10;
+  width: 20px;
+  height: 20px;
 }
 
 .form-input {
   width: 100%;
-  padding: 0.875rem 1rem 0.875rem 2.75rem;
+  padding: 0.875rem 3.5rem 0.875rem 3.5rem;
   border: 2px solid var(--gray-200);
   border-radius: var(--radius-md);
   font-family: var(--font-family);
@@ -311,13 +316,16 @@ a:hover {
 /* Password Toggle */
 .password-toggle {
   position: absolute;
-  right: 1rem;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   cursor: pointer;
   padding: 0.25rem;
   color: var(--gray-400);
   transition: color var(--transition-fast);
+  z-index: 10;
 }
 
 .password-toggle:hover {
@@ -747,6 +755,98 @@ a:hover {
 
   .submit-btn {
     padding: 0.875rem 1.25rem;
+  }
+}
+
+/* Tablet styles */
+@media (max-width: 1024px) {
+  .auth-container {
+    padding: 1rem;
+  }
+
+  .auth-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .info-section {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .info-title {
+    font-size: 1.75rem;
+  }
+
+  .info-description {
+    font-size: 1rem;
+  }
+
+  .circle-1,
+  .circle-2,
+  .circle-3 {
+    display: none;
+  }
+}
+
+/* Small mobile styles */
+@media (max-width: 576px) {
+  .auth-container {
+    padding: 0.5rem;
+  }
+
+  .auth-card {
+    padding: 1.25rem 1rem;
+    border-radius: var(--radius-md);
+  }
+
+  .auth-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .auth-header p {
+    font-size: 0.875rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-input {
+    padding: 0.75rem 2.75rem 0.75rem 2.75rem;
+    font-size: 0.875rem;
+  }
+
+  .input-icon {
+    width: 18px;
+    height: 18px;
+    right: 0.75rem;
+  }
+
+  .password-toggle {
+    left: 0.75rem;
+    width: 18px;
+    height: 18px;
+  }
+
+  .submit-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .tab-switcher {
+    padding: 0.25rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .footer {
+    padding: 1rem;
+  }
+
+  .footer-content p {
+    font-size: 0.8125rem;
   }
 }
 
