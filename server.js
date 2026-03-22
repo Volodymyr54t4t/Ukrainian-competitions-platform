@@ -1552,6 +1552,15 @@ app.get("/competitions.html", (req, res) => {
   res.sendFile(path.join(__dirname, "competitions.html"));
 });
 
+// PWA файли
+app.get("/manifest.json", (req, res) => {
+  res.sendFile(path.join(__dirname, "manifest.json"));
+});
+
+app.get("/service-worker.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "service-worker.js"));
+});
+
 // Функція для пошуку вільного порту
 const startServer = (port) => {
   const server = app.listen(port, () => {
