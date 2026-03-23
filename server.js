@@ -1661,4 +1661,3 @@ if (require.main === module) {
 
 // Експорт для тестування та middleware
 module.exports = { app, authenticateToken, requirePermission, requireRole };
-
