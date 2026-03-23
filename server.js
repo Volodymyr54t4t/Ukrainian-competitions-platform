@@ -12,6 +12,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
+
+// Створюємо папку uploads якщо не існує
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Ініціалізація Express додатку
 const app = express();
@@ -21,6 +28,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// File upload configuration (using built-in multipart parsing)
+const ALLOWED_FILE_TYPES = ['.pdf', '.doc', '.docx', '.zip', '.rar'];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Mock режим - працює без бази даних для демонстрації
 const MOCK_MODE = !process.env.DATABASE_URL;
@@ -56,6 +68,19 @@ let mockCompetitions = [
     { id: 3, title: 'Олімпіада з інформатики', subject: 'informatics', level: 'national', status: 'completed', start_date: '2026-02-01', end_date: '2026-02-15', description: 'Змагання з програмування', created_by: 2, max_participants: 300, applications_count: 0, created_at: '2026-01-10' },
     { id: 4, title: 'Конкурс есе з української мови', subject: 'ukrainian', level: 'school', status: 'active', start_date: '2026-03-20', end_date: '2026-04-05', description: 'Шкільний конкурс творчих робіт', created_by: 2, max_participants: 100, applications_count: 0, created_at: '2026-02-01' }
 ];
+
+let mockSections = [
+    { id: 1, competition_id: 1, name: 'Теоретичний тур', description: 'Теоретичні завдання та тести' },
+    { id: 2, competition_id: 1, name: 'Практичний тур', description: 'Практичні завдання та задачі' },
+    { id: 3, competition_id: 2, name: 'Теоретичний тур', description: 'Теоретичні завдання з фізики' },
+    { id: 4, competition_id: 2, name: 'Експериментальний тур', description: 'Експериментальні завдання' },
+    { id: 5, competition_id: 3, name: 'Алгоритми', description: 'Завдання на алгоритми' },
+    { id: 6, competition_id: 3, name: 'Програмування', description: 'Практичні завдання з програмування' },
+    { id: 7, competition_id: 4, name: 'Есе', description: 'Творчі есе на вільну тему' },
+    { id: 8, competition_id: 4, name: 'Диктант', description: 'Диктант з української мови' }
+];
+
+let mockApplications = [];
 
 let pool = null;
 
@@ -948,14 +973,6 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         });
     }
 });
-    } catch (error) {
-        console.error('Помилка отримання кон��урсів:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Внутрішня помилка сервера'
-        });
-    }
-});
 
 /**
  * API: Отримання конкурсу за ID
@@ -1138,24 +1155,211 @@ app.delete('/api/competitions/:id', authenticateToken, requirePermission('delete
 });
 
 /**
- * API: Подати заявку на конкурс
+ * API: Отримання секцій конкурсу
+ * GET /api/competitions/:id/sections
+ */
+app.get('/api/competitions/:id/sections', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const sections = mockSections.filter(s => s.competition_id === parseInt(id));
+            return res.status(200).json({
+                success: true,
+                sections: sections
+            });
+        }
+
+        const result = await pool.query(
+            'SELECT * FROM competition_sections WHERE competition_id = $1 ORDER BY id',
+            [id]
+        );
+
+        res.status(200).json({
+            success: true,
+            sections: result.rows
+        });
+    } catch (error) {
+        console.error('Помилка отримання секцій:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Перевірка чи студент вже подав заявку
+ * GET /api/competitions/:id/my-application
+ */
+app.get('/api/competitions/:id/my-application', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const application = mockApplications.find(a => 
+                a.competition_id === parseInt(id) && a.user_id === userId
+            );
+            return res.status(200).json({
+                success: true,
+                has_application: !!application,
+                application: application || null
+            });
+        }
+
+        const result = await pool.query(
+            `SELECT ca.*, cs.name as section_name
+             FROM competition_applications ca
+             LEFT JOIN competition_sections cs ON ca.section_id = cs.id
+             WHERE ca.competition_id = $1 AND ca.user_id = $2`,
+            [id, userId]
+        );
+
+        res.status(200).json({
+            success: true,
+            has_application: result.rows.length > 0,
+            application: result.rows[0] || null
+        });
+    } catch (error) {
+        console.error('Помилка перевірки заявки:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Подати заявку на конкурс (повна форма)
  * POST /api/competitions/:id/apply
  */
 app.post('/api/competitions/:id/apply', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.user.userId;
+        const { section_id, title, description, file_data, file_name } = req.body;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const competition = mockCompetitions.find(c => c.id === parseInt(id));
+            
+            if (!competition) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Конкурс не знайдено'
+                });
+            }
+
+            if (competition.status !== 'active') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Конкурс не є активним'
+                });
+            }
+
+            // Перевіряємо дедлайн
+            const deadline = new Date(competition.end_date);
+            if (new Date() > deadline) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Дедлайн подачі заявок минув'
+                });
+            }
+
+            // Перевіряємо чи студент вже подав заявку
+            const existingApp = mockApplications.find(a => 
+                a.competition_id === parseInt(id) && a.user_id === userId
+            );
+            if (existingApp) {
+                return res.status(409).json({
+                    success: false,
+                    message: 'Ви вже подали заявку на цей конкурс'
+                });
+            }
+
+            // Перевіряємо секцію
+            const section = mockSections.find(s => s.id === parseInt(section_id));
+            if (!section || section.competition_id !== parseInt(id)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Невірна секція конкурсу'
+                });
+            }
+
+            // Зберігаємо файл якщо є
+            let filePath = null;
+            let savedFileName = null;
+            if (file_data && file_name) {
+                const ext = path.extname(file_name).toLowerCase();
+                if (!ALLOWED_FILE_TYPES.includes(ext)) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Недозволений тип файлу. Дозволені: pdf, doc, docx, zip, rar'
+                    });
+                }
+                savedFileName = `${Date.now()}-${file_name}`;
+                filePath = `/uploads/${savedFileName}`;
+                
+                // В реальному режимі тут буде збереження файлу
+                // Для mock режиму просто зберігаємо шлях
+            }
+
+            const newApplication = {
+                id: mockApplications.length + 1,
+                competition_id: parseInt(id),
+                user_id: userId,
+                section_id: parseInt(section_id),
+                title: title,
+                description: description,
+                file_path: filePath,
+                file_name: savedFileName,
+                status: 'submitted',
+                created_at: new Date().toISOString(),
+                section_name: section.name
+            };
+            mockApplications.push(newApplication);
+            
+            // Оновлюємо кількість заявок
+            competition.applications_count = (competition.applications_count || 0) + 1;
+
+            return res.status(201).json({
+                success: true,
+                message: 'Заявку успішно подано',
+                application: newApplication
+            });
+        }
 
         // Перевіряємо чи існує конкурс і чи він активний
         const competition = await pool.query(
-            'SELECT * FROM competitions WHERE id = $1 AND status = $2',
-            [id, 'active']
+            'SELECT * FROM competitions WHERE id = $1',
+            [id]
         );
 
         if (competition.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Конкурс не знайдено або не є активним'
+                message: 'Конкурс не знайдено'
+            });
+        }
+
+        const comp = competition.rows[0];
+        
+        if (comp.status !== 'active') {
+            return res.status(400).json({
+                success: false,
+                message: 'Конкурс не є активним'
+            });
+        }
+
+        // Перевіряємо дедлайн
+        const deadline = new Date(comp.end_date);
+        if (new Date() > deadline) {
+            return res.status(400).json({
+                success: false,
+                message: 'Дедлайн подачі заявок минув'
             });
         }
 
@@ -1172,11 +1376,58 @@ app.post('/api/competitions/:id/apply', authenticateToken, async (req, res) => {
             });
         }
 
+        // Перевіряємо секцію
+        if (section_id) {
+            const sectionCheck = await pool.query(
+                'SELECT id FROM competition_sections WHERE id = $1 AND competition_id = $2',
+                [section_id, id]
+            );
+            if (sectionCheck.rows.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Невірна секція конкурсу'
+                });
+            }
+        }
+
+        // Зберігаємо файл якщо є
+        let filePath = null;
+        let savedFileName = null;
+        let fileSize = null;
+        
+        if (file_data && file_name) {
+            const ext = path.extname(file_name).toLowerCase();
+            if (!ALLOWED_FILE_TYPES.includes(ext)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Недозволений тип файлу. Дозволені: pdf, doc, docx, zip, rar'
+                });
+            }
+
+            // Декодуємо base64 та зберігаємо файл
+            const fileBuffer = Buffer.from(file_data, 'base64');
+            
+            if (fileBuffer.length > MAX_FILE_SIZE) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Файл занадто великий. Максимальний розмір: 10MB'
+                });
+            }
+
+            savedFileName = `${Date.now()}-${userId}-${file_name}`;
+            filePath = `/uploads/${savedFileName}`;
+            fileSize = fileBuffer.length;
+            
+            const fullPath = path.join(__dirname, 'uploads', savedFileName);
+            fs.writeFileSync(fullPath, fileBuffer);
+        }
+
         const result = await pool.query(
-            `INSERT INTO competition_applications (competition_id, user_id, status)
-             VALUES ($1, $2, 'pending')
+            `INSERT INTO competition_applications 
+             (competition_id, user_id, section_id, title, description, file_path, file_name, file_size, status)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'submitted')
              RETURNING *`,
-            [id, userId]
+            [id, userId, section_id, title, description, filePath, savedFileName, fileSize]
         );
 
         res.status(201).json({
@@ -1194,17 +1445,39 @@ app.post('/api/competitions/:id/apply', authenticateToken, async (req, res) => {
 });
 
 /**
- * API: Отримання заявок на конкурс
+ * API: Отримання заявок на конкурс (для адмінів/методистів)
  * GET /api/competitions/:id/applications
  */
 app.get('/api/competitions/:id/applications', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
 
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const applications = mockApplications
+                .filter(a => a.competition_id === parseInt(id))
+                .map(a => {
+                    const user = mockUsers.find(u => u.id === a.user_id);
+                    const section = mockSections.find(s => s.id === a.section_id);
+                    return {
+                        ...a,
+                        first_name: user?.first_name,
+                        last_name: user?.last_name,
+                        email: user?.email,
+                        section_name: section?.name
+                    };
+                });
+            return res.status(200).json({
+                success: true,
+                applications: applications
+            });
+        }
+
         const result = await pool.query(
-            `SELECT ca.*, u.first_name, u.last_name, u.email
+            `SELECT ca.*, u.first_name, u.last_name, u.email, cs.name as section_name
              FROM competition_applications ca
              JOIN users u ON ca.user_id = u.id
+             LEFT JOIN competition_sections cs ON ca.section_id = cs.id
              WHERE ca.competition_id = $1
              ORDER BY ca.created_at DESC`,
             [id]
@@ -1216,6 +1489,122 @@ app.get('/api/competitions/:id/applications', authenticateToken, async (req, res
         });
     } catch (error) {
         console.error('Помилка отримання заявок:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Отримання всіх заявок поточного користувача
+ * GET /api/my-applications
+ */
+app.get('/api/my-applications', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const applications = mockApplications
+                .filter(a => a.user_id === userId)
+                .map(a => {
+                    const competition = mockCompetitions.find(c => c.id === a.competition_id);
+                    const section = mockSections.find(s => s.id === a.section_id);
+                    return {
+                        ...a,
+                        competition_title: competition?.title,
+                        competition_subject: competition?.subject,
+                        competition_level: competition?.level,
+                        competition_status: competition?.status,
+                        competition_end_date: competition?.end_date,
+                        section_name: section?.name
+                    };
+                });
+            return res.status(200).json({
+                success: true,
+                applications: applications
+            });
+        }
+
+        const result = await pool.query(
+            `SELECT ca.*, 
+                    c.title as competition_title, 
+                    c.subject as competition_subject,
+                    c.level as competition_level,
+                    c.status as competition_status,
+                    c.end_date as competition_end_date,
+                    cs.name as section_name
+             FROM competition_applications ca
+             JOIN competitions c ON ca.competition_id = c.id
+             LEFT JOIN competition_sections cs ON ca.section_id = cs.id
+             WHERE ca.user_id = $1
+             ORDER BY ca.created_at DESC`,
+            [userId]
+        );
+
+        res.status(200).json({
+            success: true,
+            applications: result.rows
+        });
+    } catch (error) {
+        console.error('Помилка отримання заявок:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Завантаження файлу
+ * POST /api/upload
+ */
+app.post('/api/upload', authenticateToken, async (req, res) => {
+    try {
+        const { file_data, file_name } = req.body;
+        
+        if (!file_data || !file_name) {
+            return res.status(400).json({
+                success: false,
+                message: 'Файл не надано'
+            });
+        }
+
+        const ext = path.extname(file_name).toLowerCase();
+        if (!ALLOWED_FILE_TYPES.includes(ext)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Недозволений тип файлу. Дозволені: pdf, doc, docx, zip, rar'
+            });
+        }
+
+        const fileBuffer = Buffer.from(file_data, 'base64');
+        
+        if (fileBuffer.length > MAX_FILE_SIZE) {
+            return res.status(400).json({
+                success: false,
+                message: 'Файл занадто великий. Максимальний розмір: 10MB'
+            });
+        }
+
+        const savedFileName = `${Date.now()}-${req.user.userId}-${file_name}`;
+        const filePath = `/uploads/${savedFileName}`;
+        
+        const fullPath = path.join(__dirname, 'uploads', savedFileName);
+        fs.writeFileSync(fullPath, fileBuffer);
+
+        res.status(200).json({
+            success: true,
+            message: 'Файл успішно завантажено',
+            file: {
+                path: filePath,
+                name: savedFileName,
+                size: fileBuffer.length
+            }
+        });
+    } catch (error) {
+        console.error('Помилка завантаження файлу:', error);
         res.status(500).json({
             success: false,
             message: 'Внутрішня помилка сервера'
@@ -1236,6 +1625,16 @@ app.get('/dashboard.html', (req, res) => {
 // Маршрут для competitions (статичний файл - перевірка токена на клієнті)
 app.get('/competitions.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'competitions.html'));
+});
+
+// Маршрут для перегляду деталей конкурсу
+app.get('/competition.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'competition.html'));
+});
+
+// Маршрут для моїх заявок
+app.get('/my-applications.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'my-applications.html'));
 });
 
 // Функція для пошуку вільного порту

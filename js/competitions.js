@@ -359,11 +359,16 @@ function renderCompetitionCard(competition, role) {
     // Build action buttons based on role
     let actionButtons = '';
 
-    if (role === 'student' && competition.status === 'active') {
+    if (role === 'student') {
         actionButtons = `
-            <button class="btn btn-accent btn-sm" onclick="applyToCompetition(${competition.id})">
-                Подати заявку
+            <button class="btn btn-secondary btn-sm" onclick="viewCompetition(${competition.id})">
+                ${ICONS.eye} Переглянути
             </button>
+            ${competition.status === 'active' ? `
+                <button class="btn btn-accent btn-sm" onclick="goToApply(${competition.id})">
+                    Подати заявку
+                </button>
+            ` : ''}
         `;
     } else if (role === 'teacher') {
         actionButtons = `
@@ -470,6 +475,13 @@ function renderSidebarUser() {
             <div class="user-role">${roleDisplay}</div>
         </div>
     `;
+
+    // Show "My Applications" link for students
+    const roleName = currentUser.role?.name || currentUser.role || 'student';
+    if (roleName === 'student') {
+        const navMyApps = document.getElementById('navMyApplications');
+        if (navMyApps) navMyApps.style.display = 'flex';
+    }
 }
 
 function showGridLoading() {
@@ -590,9 +602,20 @@ function openCreateModal() {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
+function goToApply(id) {
+    window.location.href = `/competition.html?id=${id}`;
+}
+
 function viewCompetition(id) {
     const competition = competitions.find(c => c.id === id);
     if (!competition) return;
+
+    // For students, redirect to detail page
+    const roleName = currentUser.role?.name || currentUser.role || 'student';
+    if (roleName === 'student') {
+        window.location.href = `/competition.html?id=${id}`;
+        return;
+    }
 
     const startDate = formatDate(competition.start_date);
     const endDate = formatDate(competition.end_date);
