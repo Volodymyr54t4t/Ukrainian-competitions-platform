@@ -974,7 +974,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
             });
         }
 
-        // Отримуємо користувача з роллю
+        // Отримуємо ��ористувача з роллю
         const result = await pool.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
                     r.name as role_name, r.display_name as role_display_name, r.description as role_description
@@ -1302,15 +1302,20 @@ app.get("/api/competitions", authenticateToken, async (req, res) => {
                 whereClauses.push("1=0"); // вчитель без закладу нічого не бачить
             }
         } else if (userRole === "student") {
-            // Учень бачить тільки ті конкурси, на які вчитель подав заявку від нього
-            whereClauses.push(`
-        EXISTS (
-          SELECT 1 FROM competition_applications ca 
-          WHERE ca.competition_id = c.id 
-            AND ca.user_id = $${params.length + 1}
-        )
-      `);
-            params.push(userId);
+            // Учень бачить тільки конкурси, затверджені завучем для його закладу
+            if (userInstitutionId) {
+                whereClauses.push(`
+                    EXISTS (
+                        SELECT 1 FROM institution_applications ia
+                        WHERE ia.competition_id = c.id
+                        AND ia.institution_id = $${params.length + 1}
+                        AND ia.status = 'approved'
+                    )
+                `);
+                params.push(userInstitutionId);
+            } else {
+                whereClauses.push("1=0"); // учень без закладу нічого не бачить
+            }
         }
         // admin, methodist, judge — бачать всі опубліковані конкурси
 
