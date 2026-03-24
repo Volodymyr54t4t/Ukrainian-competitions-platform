@@ -989,18 +989,48 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
             paramIndex++;
         }
 
-        // Фільтрація по ролях:
-        // - admin бачить ВСІ конкурси
-        // - teacher бачить свої конкурси + активні
-        // - student бачить тільки активні
-        if (userRole === 'teacher') {
-            query += ` AND (c.created_by = $${paramIndex} OR c.status = 'active')`;
-            params.push(userId);
-            paramIndex++;
+        // Фільтрація по ролях відповідно до ієрархії:
+        // - admin/methodist бачать ВСІ конкурси
+        // - deputy_principal бачить опубліковані конкурси (published/active)
+        // - teacher бачить тільки конкурси, затверджені завучем для їх закладу + свої
+        // - student бачить тільки конкурси, затверджені завучем для їх закладу
+        
+        // Отримуємо institution_id користувача
+        const userResult = await pool.query('SELECT institution_id FROM users WHERE id = $1', [userId]);
+        const userInstitutionId = userResult.rows[0]?.institution_id;
+        
+        if (userRole === 'deputy_principal') {
+            // Завуч бачить всі опубліковані конкурси (published або active)
+            query += ` AND (c.status = 'published' OR c.status = 'active')`;
+        } else if (userRole === 'teacher') {
+            // Вчитель бачить тільки конкурси, затверджені завучем для їх закладу + свої створені
+            if (userInstitutionId) {
+                query += ` AND (c.created_by = $${paramIndex} OR c.id IN (
+                    SELECT competition_id FROM institution_applications 
+                    WHERE institution_id = $${paramIndex + 1} AND status = 'approved'
+                ))`;
+                params.push(userId, userInstitutionId);
+                paramIndex += 2;
+            } else {
+                query += ` AND c.created_by = $${paramIndex}`;
+                params.push(userId);
+                paramIndex++;
+            }
         } else if (userRole === 'student') {
-            query += ` AND c.status = 'active'`;
+            // Учень бачить тільки конкурси, затверджені завучем для їх закладу
+            if (userInstitutionId) {
+                query += ` AND c.id IN (
+                    SELECT competition_id FROM institution_applications 
+                    WHERE institution_id = $${paramIndex} AND status = 'approved'
+                )`;
+                params.push(userInstitutionId);
+                paramIndex++;
+            } else {
+                // Якщо учень не прив'язаний до закладу - показуємо активні
+                query += ` AND c.status = 'active'`;
+            }
         }
-        // admin - без додаткових фільтрів, бачить все
+        // admin/methodist - без додаткових фільтрів, бачать все
 
         query += ` ORDER BY c.created_at DESC`;
 
@@ -1010,10 +1040,29 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
         
         console.log('[v0] Query result count:', result.rows.length);
+        
+        // Для deputy_principal додаємо інформацію про статус заявки закладу
+        let competitions = result.rows;
+        if (userRole === 'deputy_principal' && userInstitutionId) {
+            const instAppsResult = await pool.query(
+                'SELECT competition_id, id, status, approved_at, notes FROM institution_applications WHERE institution_id = $1',
+                [userInstitutionId]
+            );
+            const instApps = instAppsResult.rows;
+            
+            competitions = competitions.map(c => {
+                const instApp = instApps.find(ia => ia.competition_id === c.id);
+                return {
+                    ...c,
+                    institution_application_status: instApp?.status || null,
+                    institution_application_id: instApp?.id || null
+                };
+            });
+        }
 
         res.status(200).json({
             success: true,
-            competitions: result.rows
+            competitions: competitions
         });
     } catch (error) {
         console.error('[v0] Помилка отримання конкурсів:', error.message);
