@@ -974,7 +974,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
             });
         }
 
-        // Отримуємо ��ористувача з роллю
+        // Отримуємо ����ористувача з роллю
         const result = await pool.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
                     r.name as role_name, r.display_name as role_display_name, r.description as role_description
@@ -1254,7 +1254,7 @@ app.get("/api/competitions", authenticateToken, async (req, res) => {
         );
 
         let params = [];
-        let whereClauses = ["c.status IN ('published', 'active')"];
+        let whereClauses = [];
 
         let query = `
       SELECT c.*, 
@@ -1273,19 +1273,13 @@ app.get("/api/competitions", authenticateToken, async (req, res) => {
         const userInstitutionId = userResult.rows[0]?.institution_id;
 
         // ==================== ФІЛЬТРАЦІЯ ЗА РОЛЯМИ ====================
-        if (userRole === "deputy_principal") {
-            // Завуч бачить всі опубліковані конкурси
+        if (userRole === "admin" || userRole === "methodist") {
+            // Адмін і методист бачать всі конкурси (всі статуси)
+            // Без додаткових умов
+        } else if (userRole === "deputy_principal") {
+            // Завуч бачить всі опубліковані/активні конкурси
             // (може затверджувати їх для свого закладу)
-            if (userInstitutionId) {
-                whereClauses.push(`
-          (c.status IN ('published', 'active') 
-           OR EXISTS (
-             SELECT 1 FROM institution_applications 
-             WHERE competition_id = c.id AND institution_id = $${params.length + 1}
-           ))
-        `);
-                params.push(userInstitutionId);
-            }
+            whereClauses.push("c.status IN ('published', 'active')");
         } else if (userRole === "teacher") {
             // Вчитель бачить тільки конкурси, затверджені завучем його закладу
             if (userInstitutionId) {
@@ -1316,8 +1310,10 @@ app.get("/api/competitions", authenticateToken, async (req, res) => {
             } else {
                 whereClauses.push("1=0"); // учень без закладу нічого не бачить
             }
+        } else {
+            // Інші ролі (judge) - бачать тільки опубліковані/активні
+            whereClauses.push("c.status IN ('published', 'active')");
         }
-        // admin, methodist, judge — бачать всі опубліковані конкурси
 
         // Збираємо WHERE
         query += " WHERE " + whereClauses.join(" AND ");
@@ -2310,7 +2306,7 @@ app.post(
                 });
             }
 
-            // Перевіряємо, чи існує конкурс і чи він опублікований
+            // Перевіряємо, чи існує конкурс і ��и він опублікований
             const competitionCheck = await pool.query(
                 "SELECT id, status FROM competitions WHERE id = $1",
                 [competitionId],
