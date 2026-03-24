@@ -431,6 +431,9 @@ let mockInstitutionApplications = [
     },
 ];
 
+// Mock дані для учасників конкурсів (додані вчителем)
+let mockCompetitionParticipants = [];
+
 let pool = null;
 
 if (!MOCK_MODE) {
@@ -974,7 +977,7 @@ app.get("/api/auth/me", authenticateToken, async (req, res) => {
             });
         }
 
-        // Отримуємо ����ористувача з роллю
+        // Отримуємо ������ористувача з роллю
         const result = await pool.query(
             `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
                     r.name as role_name, r.display_name as role_display_name, r.description as role_description
@@ -2306,7 +2309,7 @@ app.post(
                 });
             }
 
-            // Перевіряємо, чи існує конкурс і ��и він опублікований
+            // Перевіряємо, чи існує кон��урс і ��и він опублікований
             const competitionCheck = await pool.query(
                 "SELECT id, status FROM competitions WHERE id = $1",
                 [competitionId],
@@ -2550,6 +2553,519 @@ app.get("/api/institutions", authenticateToken, async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Внутрішня помилка сервера",
+        });
+    }
+});
+
+/**
+ * API: Отримання списку учнів закладу (для вчителя)
+ * GET /api/institution/students
+ */
+app.get("/api/institution/students", authenticateToken, requireRole(["teacher", "deputy_principal", "admin"]), async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const currentUser = mockUsers.find(u => u.id === userId);
+            if (!currentUser || !currentUser.institution_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Ви не прив'язані до навчального закладу"
+                });
+            }
+
+            // Отримуємо учнів з того ж закладу
+            const students = mockUsers.filter(u => 
+                u.institution_id === currentUser.institution_id && 
+                u.role === 'student'
+            ).map(s => ({
+                id: s.id,
+                first_name: s.first_name,
+                last_name: s.last_name,
+                email: s.email,
+                institution_id: s.institution_id
+            }));
+
+            const institution = mockInstitutions.find(i => i.id === currentUser.institution_id);
+
+            return res.status(200).json({
+                success: true,
+                students: students,
+                institution: institution
+            });
+        }
+
+        // DB MODE
+        const userResult = await pool.query(
+            "SELECT institution_id FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (!userResult.rows[0]?.institution_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Ви не прив'язані до навчального закладу"
+            });
+        }
+
+        const institutionId = userResult.rows[0].institution_id;
+
+        const studentsResult = await pool.query(
+            `SELECT u.id, u.first_name, u.last_name, u.email, u.institution_id
+             FROM users u
+             JOIN roles r ON u.role_id = r.id
+             WHERE u.institution_id = $1 AND r.name = 'student'
+             ORDER BY u.last_name, u.first_name`,
+            [institutionId]
+        );
+
+        const institutionResult = await pool.query(
+            "SELECT * FROM institutions WHERE id = $1",
+            [institutionId]
+        );
+
+        res.status(200).json({
+            success: true,
+            students: studentsResult.rows,
+            institution: institutionResult.rows[0] || null
+        });
+    } catch (error) {
+        console.error("Помилка отримання учнів закладу:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
+        });
+    }
+});
+
+/**
+ * API: Додавання учнів до конкурсу (для вчителя)
+ * POST /api/competitions/:id/participants
+ */
+app.post("/api/competitions/:id/participants", authenticateToken, requireRole(["teacher", "deputy_principal", "admin"]), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { student_ids, notes } = req.body;
+        const teacherId = req.user.userId;
+
+        if (!student_ids || !Array.isArray(student_ids) || student_ids.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Оберіть хоча б одного учня"
+            });
+        }
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const competition = mockCompetitions.find(c => c.id === parseInt(id));
+            if (!competition) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Конкурс не знайдено"
+                });
+            }
+
+            const teacher = mockUsers.find(u => u.id === teacherId);
+            if (!teacher || !teacher.institution_id) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Ви не прив'язані до навчального закладу"
+                });
+            }
+
+            // Перевіряємо чи конкурс затверджений для закладу
+            const institutionApp = mockInstitutionApplications.find(
+                ia => ia.competition_id === parseInt(id) && 
+                      ia.institution_id === teacher.institution_id && 
+                      ia.status === 'approved'
+            );
+
+            if (!institutionApp) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Конкурс не затверджений для вашого закладу"
+                });
+            }
+
+            const addedParticipants = [];
+            const errors = [];
+
+            for (const studentId of student_ids) {
+                const student = mockUsers.find(u => u.id === studentId);
+                
+                if (!student) {
+                    errors.push(`Учня з ID ${studentId} не знайдено`);
+                    continue;
+                }
+
+                if (student.institution_id !== teacher.institution_id) {
+                    errors.push(`Учень ${student.first_name} ${student.last_name} не з вашого закладу`);
+                    continue;
+                }
+
+                // Перевіряємо чи учень вже доданий
+                const existing = mockCompetitionParticipants.find(
+                    p => p.competition_id === parseInt(id) && p.student_id === studentId
+                );
+
+                if (existing) {
+                    errors.push(`Учень ${student.first_name} ${student.last_name} вже доданий до конкурсу`);
+                    continue;
+                }
+
+                const newParticipant = {
+                    id: mockCompetitionParticipants.length + 1,
+                    competition_id: parseInt(id),
+                    student_id: studentId,
+                    teacher_id: teacherId,
+                    institution_id: teacher.institution_id,
+                    status: 'invited',
+                    notes: notes || null,
+                    created_at: new Date().toISOString(),
+                    student_name: `${student.first_name} ${student.last_name}`,
+                    student_email: student.email
+                };
+
+                mockCompetitionParticipants.push(newParticipant);
+                addedParticipants.push(newParticipant);
+            }
+
+            return res.status(201).json({
+                success: true,
+                message: `Додано ${addedParticipants.length} учнів до конкурсу`,
+                participants: addedParticipants,
+                errors: errors.length > 0 ? errors : undefined
+            });
+        }
+
+        // DB MODE
+        const teacherResult = await pool.query(
+            "SELECT institution_id FROM users WHERE id = $1",
+            [teacherId]
+        );
+
+        if (!teacherResult.rows[0]?.institution_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Ви не прив'язані до навчального закладу"
+            });
+        }
+
+        const institutionId = teacherResult.rows[0].institution_id;
+
+        // Перевіряємо чи конкурс затверджений для закладу
+        const institutionAppResult = await pool.query(
+            `SELECT id FROM institution_applications 
+             WHERE competition_id = $1 AND institution_id = $2 AND status = 'approved'`,
+            [id, institutionId]
+        );
+
+        if (institutionAppResult.rows.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Конкурс не затверджений для вашого закладу"
+            });
+        }
+
+        const addedParticipants = [];
+        const errors = [];
+
+        for (const studentId of student_ids) {
+            try {
+                // Перевіряємо чи учень з того ж закладу і має роль student
+                const studentCheck = await pool.query(
+                    `SELECT u.id, u.first_name, u.last_name, u.email, u.institution_id, r.name as role_name
+                     FROM users u
+                     JOIN roles r ON u.role_id = r.id
+                     WHERE u.id = $1`,
+                    [studentId]
+                );
+
+                if (studentCheck.rows.length === 0) {
+                    errors.push(`Учня з ID ${studentId} не знайдено`);
+                    continue;
+                }
+
+                const student = studentCheck.rows[0];
+
+                if (student.institution_id !== institutionId) {
+                    errors.push(`Учень ${student.first_name} ${student.last_name} не з вашого закладу`);
+                    continue;
+                }
+
+                if (student.role_name !== 'student') {
+                    errors.push(`Користувач ${student.first_name} ${student.last_name} не є учнем`);
+                    continue;
+                }
+
+                // Додаємо учня до конкурсу
+                const insertResult = await pool.query(
+                    `INSERT INTO competition_participants (competition_id, student_id, teacher_id, institution_id, status, notes)
+                     VALUES ($1, $2, $3, $4, 'invited', $5)
+                     ON CONFLICT (competition_id, student_id) DO NOTHING
+                     RETURNING *`,
+                    [id, studentId, teacherId, institutionId, notes || null]
+                );
+
+                if (insertResult.rows.length > 0) {
+                    addedParticipants.push({
+                        ...insertResult.rows[0],
+                        student_name: `${student.first_name} ${student.last_name}`,
+                        student_email: student.email
+                    });
+                } else {
+                    errors.push(`Учень ${student.first_name} ${student.last_name} вже доданий до конкурсу`);
+                }
+            } catch (err) {
+                errors.push(`Помилка додавання учня ${studentId}: ${err.message}`);
+            }
+        }
+
+        res.status(201).json({
+            success: true,
+            message: `Додано ${addedParticipants.length} учнів до конкурсу`,
+            participants: addedParticipants,
+            errors: errors.length > 0 ? errors : undefined
+        });
+    } catch (error) {
+        console.error("Помилка додавання учнів до конкурсу:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
+        });
+    }
+});
+
+/**
+ * API: Отримання списку учасників конкурсу (для вчителя)
+ * GET /api/competitions/:id/participants
+ */
+app.get("/api/competitions/:id/participants", authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            let participants = mockCompetitionParticipants.filter(p => p.competition_id === parseInt(id));
+
+            // Для вчителя показуємо тільки учнів його закладу
+            if (userRole === 'teacher') {
+                const teacher = mockUsers.find(u => u.id === userId);
+                if (teacher && teacher.institution_id) {
+                    participants = participants.filter(p => p.institution_id === teacher.institution_id);
+                }
+            }
+
+            // Додаємо дані про учнів
+            const enrichedParticipants = participants.map(p => {
+                const student = mockUsers.find(u => u.id === p.student_id);
+                const teacher = mockUsers.find(u => u.id === p.teacher_id);
+                return {
+                    ...p,
+                    student_name: student ? `${student.first_name} ${student.last_name}` : 'Невідомий',
+                    student_email: student?.email || '',
+                    teacher_name: teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Невідомий'
+                };
+            });
+
+            return res.status(200).json({
+                success: true,
+                participants: enrichedParticipants
+            });
+        }
+
+        // DB MODE
+        let query = `
+            SELECT cp.*, 
+                   s.first_name as student_first_name, 
+                   s.last_name as student_last_name,
+                   s.email as student_email,
+                   t.first_name as teacher_first_name,
+                   t.last_name as teacher_last_name
+            FROM competition_participants cp
+            JOIN users s ON cp.student_id = s.id
+            JOIN users t ON cp.teacher_id = t.id
+            WHERE cp.competition_id = $1
+        `;
+        const params = [id];
+
+        // Для вчителя показуємо тільки учнів його закладу
+        if (userRole === 'teacher') {
+            const teacherResult = await pool.query(
+                "SELECT institution_id FROM users WHERE id = $1",
+                [userId]
+            );
+            if (teacherResult.rows[0]?.institution_id) {
+                query += " AND cp.institution_id = $2";
+                params.push(teacherResult.rows[0].institution_id);
+            }
+        }
+
+        query += " ORDER BY s.last_name, s.first_name";
+
+        const result = await pool.query(query, params);
+
+        const participants = result.rows.map(p => ({
+            ...p,
+            student_name: `${p.student_first_name} ${p.student_last_name}`,
+            teacher_name: `${p.teacher_first_name} ${p.teacher_last_name}`
+        }));
+
+        res.status(200).json({
+            success: true,
+            participants: participants
+        });
+    } catch (error) {
+        console.error("Помилка отримання учасників:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
+        });
+    }
+});
+
+/**
+ * API: Видалення учня з конкурсу (для вчителя)
+ * DELETE /api/competitions/:id/participants/:studentId
+ */
+app.delete("/api/competitions/:id/participants/:studentId", authenticateToken, requireRole(["teacher", "deputy_principal", "admin"]), async (req, res) => {
+    try {
+        const { id, studentId } = req.params;
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const teacher = mockUsers.find(u => u.id === userId);
+            const participantIndex = mockCompetitionParticipants.findIndex(
+                p => p.competition_id === parseInt(id) && p.student_id === parseInt(studentId)
+            );
+
+            if (participantIndex === -1) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Учасника не знайдено"
+                });
+            }
+
+            const participant = mockCompetitionParticipants[participantIndex];
+
+            // Вчитель може видаляти тільки учнів зі свого закладу
+            if (teacher && teacher.institution_id && participant.institution_id !== teacher.institution_id) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Ви не можете видалити учня з іншого закладу"
+                });
+            }
+
+            mockCompetitionParticipants.splice(participantIndex, 1);
+
+            return res.status(200).json({
+                success: true,
+                message: "Учня видалено з конкурсу"
+            });
+        }
+
+        // DB MODE
+        const teacherResult = await pool.query(
+            "SELECT institution_id FROM users WHERE id = $1",
+            [userId]
+        );
+
+        let deleteQuery = "DELETE FROM competition_participants WHERE competition_id = $1 AND student_id = $2";
+        const params = [id, studentId];
+
+        // Вчитель може видаляти тільки учнів зі свого закладу
+        if (teacherResult.rows[0]?.institution_id) {
+            deleteQuery += " AND institution_id = $3";
+            params.push(teacherResult.rows[0].institution_id);
+        }
+
+        deleteQuery += " RETURNING id";
+
+        const result = await pool.query(deleteQuery, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Учасника не знайдено або ви не маєте прав на його видалення"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Учня видалено з конкурсу"
+        });
+    } catch (error) {
+        console.error("Помилка видалення учасника:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
+        });
+    }
+});
+
+/**
+ * API: Отримання конкурсів, до яких учня додано (для учня)
+ * GET /api/my-competitions
+ */
+app.get("/api/my-competitions", authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const participations = mockCompetitionParticipants.filter(p => p.student_id === userId);
+            
+            const competitions = participations.map(p => {
+                const competition = mockCompetitions.find(c => c.id === p.competition_id);
+                const teacher = mockUsers.find(u => u.id === p.teacher_id);
+                return {
+                    ...competition,
+                    participation_status: p.status,
+                    added_by: teacher ? `${teacher.first_name} ${teacher.last_name}` : 'Невідомий',
+                    added_at: p.created_at
+                };
+            }).filter(c => c !== undefined);
+
+            return res.status(200).json({
+                success: true,
+                competitions: competitions
+            });
+        }
+
+        // DB MODE
+        const result = await pool.query(
+            `SELECT c.*, 
+                    cp.status as participation_status,
+                    cp.created_at as added_at,
+                    t.first_name as teacher_first_name,
+                    t.last_name as teacher_last_name,
+                    (SELECT COUNT(*) FROM competition_applications WHERE competition_id = c.id) as applications_count
+             FROM competitions c
+             JOIN competition_participants cp ON c.id = cp.competition_id
+             JOIN users t ON cp.teacher_id = t.id
+             WHERE cp.student_id = $1
+             ORDER BY cp.created_at DESC`,
+            [userId]
+        );
+
+        const competitions = result.rows.map(c => ({
+            ...c,
+            added_by: `${c.teacher_first_name} ${c.teacher_last_name}`
+        }));
+
+        res.status(200).json({
+            success: true,
+            competitions: competitions
+        });
+    } catch (error) {
+        console.error("Помилка отримання конкурсів учня:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
         });
     }
 });
