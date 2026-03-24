@@ -39,11 +39,12 @@ const MOCK_MODE = !process.env.DATABASE_URL;
 
 // Mock дані для демонстрації
 const mockUsers = [
-    { id: 1, first_name: 'Адмін', last_name: 'Системи', email: 'admin@test.com', password_hash: '$2a$10$mockhashadmin', role: 'admin', role_id: 5 },
-    { id: 2, first_name: 'Іван', last_name: 'Петренко', email: 'student@test.com', password_hash: '$2a$10$mockhashstudent', role: 'student', role_id: 1 },
-    { id: 3, first_name: 'Марія', last_name: 'Коваленко', email: 'teacher@test.com', password_hash: '$2a$10$mockhashteacher', role: 'teacher', role_id: 2 },
-    { id: 4, first_name: 'Олена', last_name: 'Сидоренко', email: 'methodist@test.com', password_hash: '$2a$10$mockhashmethodist', role: 'methodist', role_id: 3 },
-    { id: 5, first_name: 'Петро', last_name: 'Іваненко', email: 'judge@test.com', password_hash: '$2a$10$mockhashjudge', role: 'judge', role_id: 4 }
+    { id: 1, first_name: 'Адмін', last_name: 'Системи', email: 'admin@test.com', password_hash: '$2a$10$mockhashadmin', role: 'admin', role_id: 5, institution_id: null },
+    { id: 2, first_name: 'Іван', last_name: 'Петренко', email: 'student@test.com', password_hash: '$2a$10$mockhashstudent', role: 'student', role_id: 1, institution_id: 1 },
+    { id: 3, first_name: 'Марія', last_name: 'Коваленко', email: 'teacher@test.com', password_hash: '$2a$10$mockhashteacher', role: 'teacher', role_id: 2, institution_id: 1 },
+    { id: 4, first_name: 'Олена', last_name: 'Сидоренко', email: 'methodist@test.com', password_hash: '$2a$10$mockhashmethodist', role: 'methodist', role_id: 3, institution_id: null },
+    { id: 5, first_name: 'Петро', last_name: 'Іваненко', email: 'judge@test.com', password_hash: '$2a$10$mockhashjudge', role: 'judge', role_id: 4, institution_id: null },
+    { id: 6, first_name: 'Наталія', last_name: 'Шевченко', email: 'deputy@test.com', password_hash: '$2a$10$mockhashdeputy', role: 'deputy_principal', role_id: 6, institution_id: 1 }
 ];
 
 const mockRoles = [
@@ -51,15 +52,17 @@ const mockRoles = [
     { id: 2, name: 'teacher', display_name: 'Вчитель', description: 'Керівник учнів' },
     { id: 3, name: 'methodist', display_name: 'Методист', description: 'Організатор конкурсів' },
     { id: 4, name: 'judge', display_name: 'Суддя', description: 'Оцінювач робіт' },
-    { id: 5, name: 'admin', display_name: 'Адміністратор', description: 'Повний доступ' }
+    { id: 5, name: 'admin', display_name: 'Адміністратор', description: 'Повний доступ' },
+    { id: 6, name: 'deputy_principal', display_name: 'Завуч', description: 'Затверджує проведення конкурсів у закладі' }
 ];
 
 const mockPermissions = {
     1: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'submit_application', display_name: 'Подання заявок', category: 'applications' }],
     2: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_students', display_name: 'Керування учнями', category: 'users' }],
-    3: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_competitions', display_name: 'Керування конкурсами', category: 'competitions' }, { name: 'view_applications', display_name: 'Перегляд заявок', category: 'applications' }],
+    3: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_competitions', display_name: 'Керування конкурсами', category: 'competitions' }, { name: 'view_applications', display_name: 'Перегляд заявок', category: 'applications' }, { name: 'publish_competition', display_name: 'Публікація конкурсу', category: 'competitions' }],
     4: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'evaluate_works', display_name: 'Оцінювання робіт', category: 'judging' }],
-    5: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_competitions', display_name: 'Керування конкурсами', category: 'competitions' }, { name: 'manage_users', display_name: 'Керування користувачами', category: 'users' }, { name: 'manage_roles', display_name: 'Керування ролями', category: 'system' }, { name: 'system_settings', display_name: 'Налаштування системи', category: 'system' }]
+    5: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'create_competition', display_name: 'Створення конкурсів', category: 'competitions' }, { name: 'manage_competitions', display_name: 'Керування конкурсами', category: 'competitions' }, { name: 'manage_users', display_name: 'Керування користувачами', category: 'users' }, { name: 'manage_roles', display_name: 'Керування ролями', category: 'system' }, { name: 'system_settings', display_name: 'Налаштування системи', category: 'system' }],
+    6: [{ name: 'view_competitions', display_name: 'Перегляд конкурсів', category: 'competitions' }, { name: 'approve_institution_competitions', display_name: 'Затвердження конкурсів для закладу', category: 'competitions' }, { name: 'view_institution_applications', display_name: 'Перегляд заявок закладу', category: 'applications' }, { name: 'manage_institution_applications', display_name: 'Керування заявками закладу', category: 'applications' }]
 };
 
 let mockCompetitions = [
@@ -81,6 +84,20 @@ let mockSections = [
 ];
 
 let mockApplications = [];
+
+// Mock дані для закладів освіти
+const mockInstitutions = [
+    { id: 1, name: 'Київська гімназія №1', code: 'KG001', region: 'Київська область', city: 'Київ' },
+    { id: 2, name: 'Львівський ліцей №5', code: 'LL005', region: 'Львівська область', city: 'Львів' },
+    { id: 3, name: 'Одеська школа №23', code: 'OS023', region: 'Одеська область', city: 'Одеса' },
+    { id: 4, name: 'Харківська гімназія №7', code: 'HG007', region: 'Харківська область', city: 'Харків' }
+];
+
+// Mock дані для заявок закладів на участь у конкурсах
+let mockInstitutionApplications = [
+    { id: 1, competition_id: 1, institution_id: 1, status: 'approved', approved_by: 6, approved_at: '2026-03-20', notes: 'Затверджено для проведення' },
+    { id: 2, competition_id: 2, institution_id: 1, status: 'pending', approved_by: null, approved_at: null, notes: null }
+];
 
 let pool = null;
 
@@ -109,6 +126,7 @@ if (!MOCK_MODE) {
     console.log('  - teacher@test.com / password123 (Вчитель)');
     console.log('  - methodist@test.com / password123 (Методист)');
     console.log('  - judge@test.com / password123 (Суддя)');
+    console.log('  - deputy@test.com / password123 (Завуч)');
 }
 
 // JWT секретний ключ
@@ -872,16 +890,49 @@ app.get('/api/competitions', authenticateToken, async (req, res) => {
                 );
             }
             
-            // Адміністратор бачить всі конкурси
-            // Для teacher показуємо свої або активні
-            if (userRole === 'teacher') {
-                filteredCompetitions = filteredCompetitions.filter(c => c.created_by === userId || c.status === 'active');
-            }
+            // Фільтрація по ролях відповідно до ієрархії:
+            // - admin/methodist бачать ВСІ конкурси
+            // - deputy_principal бачить опубліковані конкурси (published/active)
+            // - teacher бачить тільки конкурси, затверджені завучем для їх закладу
+            // - student бачить тільки конкурси, затверджені завучем для їх закладу
             
-            // Для student показуємо тільки активні
-            if (userRole === 'student') {
-                filteredCompetitions = filteredCompetitions.filter(c => c.status === 'active');
+            const mockUser = mockUsers.find(u => u.id === userId);
+            const userInstitutionId = mockUser?.institution_id;
+            
+            if (userRole === 'deputy_principal') {
+                // Завуч бачить всі опубліковані конкурси (published або active)
+                filteredCompetitions = filteredCompetitions.filter(c => 
+                    c.status === 'published' || c.status === 'active'
+                );
+                // Додаємо інформацію про статус заявки закладу
+                filteredCompetitions = filteredCompetitions.map(c => {
+                    const instApp = mockInstitutionApplications.find(
+                        ia => ia.competition_id === c.id && ia.institution_id === userInstitutionId
+                    );
+                    return {
+                        ...c,
+                        institution_application_status: instApp?.status || null,
+                        institution_application_id: instApp?.id || null
+                    };
+                });
+            } else if (userRole === 'teacher') {
+                // Вчитель бачить тільки конкурси, затверджені завучем для їх закладу
+                const approvedCompetitionIds = mockInstitutionApplications
+                    .filter(ia => ia.institution_id === userInstitutionId && ia.status === 'approved')
+                    .map(ia => ia.competition_id);
+                filteredCompetitions = filteredCompetitions.filter(c => 
+                    approvedCompetitionIds.includes(c.id) || c.created_by === userId
+                );
+            } else if (userRole === 'student') {
+                // Учень бачить тільки конкурси, затверджені завучем для їх закладу
+                const approvedCompetitionIds = mockInstitutionApplications
+                    .filter(ia => ia.institution_id === userInstitutionId && ia.status === 'approved')
+                    .map(ia => ia.competition_id);
+                filteredCompetitions = filteredCompetitions.filter(c => 
+                    approvedCompetitionIds.includes(c.id)
+                );
             }
+            // admin/methodist - без додаткових фільтрів, бачать все
             
             return res.status(200).json({
                 success: true,
@@ -1637,6 +1688,336 @@ app.get('/my-applications.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'my-applications.html'));
 });
 
+// ============================================================================
+// API для системи заявок закладів (deputy_principal)
+// ============================================================================
+
+/**
+ * API: Отримання заявок закладу на конкурси (для завуча)
+ * GET /api/institution-applications
+ */
+app.get('/api/institution-applications', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+
+        // Тільки для завучів
+        if (userRole !== 'deputy_principal' && userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Доступ заборонено'
+            });
+        }
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const mockUser = mockUsers.find(u => u.id === userId);
+            const institutionId = mockUser?.institution_id;
+
+            if (!institutionId && userRole !== 'admin') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Користувач не прив\'язаний до закладу'
+                });
+            }
+
+            // Отримуємо всі опубліковані конкурси
+            const publishedCompetitions = mockCompetitions.filter(c => 
+                c.status === 'published' || c.status === 'active'
+            );
+
+            // Додаємо інформацію про статус заявки
+            const competitionsWithStatus = publishedCompetitions.map(c => {
+                const instApp = mockInstitutionApplications.find(
+                    ia => ia.competition_id === c.id && (userRole === 'admin' || ia.institution_id === institutionId)
+                );
+                return {
+                    ...c,
+                    institution_application_status: instApp?.status || null,
+                    institution_application_id: instApp?.id || null,
+                    approved_at: instApp?.approved_at || null,
+                    notes: instApp?.notes || null
+                };
+            });
+
+            return res.status(200).json({
+                success: true,
+                competitions: competitionsWithStatus,
+                institution: mockInstitutions.find(i => i.id === institutionId)
+            });
+        }
+
+        // DB MODE - буде реалізовано пізніше
+        res.status(501).json({
+            success: false,
+            message: 'DB mode not implemented yet'
+        });
+    } catch (error) {
+        console.error('Помилка отримання заявок закладу:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Затвердити/відхилити конкурс для закладу (для завуча)
+ * POST /api/institution-applications/:competitionId/approve
+ */
+app.post('/api/institution-applications/:competitionId/approve', authenticateToken, async (req, res) => {
+    try {
+        const { competitionId } = req.params;
+        const { status, notes } = req.body; // status: 'approved' | 'rejected'
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+
+        // Тільки для завучів
+        if (userRole !== 'deputy_principal') {
+            return res.status(403).json({
+                success: false,
+                message: 'Доступ заборонено. Тільки завуч може затверджувати конкурси'
+            });
+        }
+
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Невірний статус. Допустимі: approved, rejected'
+            });
+        }
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const mockUser = mockUsers.find(u => u.id === userId);
+            const institutionId = mockUser?.institution_id;
+
+            if (!institutionId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Користувач не прив\'язаний до закладу'
+                });
+            }
+
+            const competition = mockCompetitions.find(c => c.id === parseInt(competitionId));
+            if (!competition) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Конкурс не знайдено'
+                });
+            }
+
+            // Перевіряємо чи конкурс опублікований
+            if (competition.status !== 'published' && competition.status !== 'active') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Конкурс ще не опубліковано методистом'
+                });
+            }
+
+            // Шукаємо існуючу заявку або створюємо нову
+            let instApp = mockInstitutionApplications.find(
+                ia => ia.competition_id === parseInt(competitionId) && ia.institution_id === institutionId
+            );
+
+            if (instApp) {
+                // Оновлюємо існуючу
+                instApp.status = status;
+                instApp.approved_by = userId;
+                instApp.approved_at = new Date().toISOString();
+                instApp.notes = notes || null;
+            } else {
+                // Створюємо нову
+                instApp = {
+                    id: mockInstitutionApplications.length + 1,
+                    competition_id: parseInt(competitionId),
+                    institution_id: institutionId,
+                    status: status,
+                    approved_by: userId,
+                    approved_at: new Date().toISOString(),
+                    notes: notes || null
+                };
+                mockInstitutionApplications.push(instApp);
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: status === 'approved' 
+                    ? 'Конкурс затверджено для проведення у закладі' 
+                    : 'Конкурс відхилено для закладу',
+                institution_application: instApp
+            });
+        }
+
+        // DB MODE - буде реалізовано пізніше
+        res.status(501).json({
+            success: false,
+            message: 'DB mode not implemented yet'
+        });
+    } catch (error) {
+        console.error('Помилка затвердження конкурсу:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Отримання заявок вчителів/учнів закладу для конкурсу (для завуча)
+ * GET /api/institution-applications/:competitionId/applications
+ */
+app.get('/api/institution-applications/:competitionId/applications', authenticateToken, async (req, res) => {
+    try {
+        const { competitionId } = req.params;
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+
+        // Тільки для завучів
+        if (userRole !== 'deputy_principal' && userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Доступ заборонено'
+            });
+        }
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const mockUser = mockUsers.find(u => u.id === userId);
+            const institutionId = mockUser?.institution_id;
+
+            // Отримуємо заявки від користувачів цього закладу
+            const institutionUserIds = mockUsers
+                .filter(u => u.institution_id === institutionId)
+                .map(u => u.id);
+
+            const applications = mockApplications
+                .filter(a => a.competition_id === parseInt(competitionId) && institutionUserIds.includes(a.user_id))
+                .map(a => {
+                    const user = mockUsers.find(u => u.id === a.user_id);
+                    const section = mockSections.find(s => s.id === a.section_id);
+                    return {
+                        ...a,
+                        first_name: user?.first_name,
+                        last_name: user?.last_name,
+                        email: user?.email,
+                        role: user?.role,
+                        section_name: section?.name
+                    };
+                });
+
+            return res.status(200).json({
+                success: true,
+                applications: applications
+            });
+        }
+
+        // DB MODE - буде реалізовано пізніше
+        res.status(501).json({
+            success: false,
+            message: 'DB mode not implemented yet'
+        });
+    } catch (error) {
+        console.error('Помилка отримання заявок закладу:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Отримання списку закладів (для адміністрування)
+ * GET /api/institutions
+ */
+app.get('/api/institutions', authenticateToken, async (req, res) => {
+    try {
+        // MOCK MODE
+        if (MOCK_MODE) {
+            return res.status(200).json({
+                success: true,
+                institutions: mockInstitutions
+            });
+        }
+
+        // DB MODE
+        const result = await pool.query('SELECT * FROM institutions ORDER BY name');
+        res.status(200).json({
+            success: true,
+            institutions: result.rows
+        });
+    } catch (error) {
+        console.error('Помилка отримання закладів:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
+/**
+ * API: Публікація конкурсу (для методиста)
+ * POST /api/competitions/:id/publish
+ */
+app.post('/api/competitions/:id/publish', authenticateToken, requirePermission('publish_competition'), async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const competition = mockCompetitions.find(c => c.id === parseInt(id));
+            if (!competition) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Конкурс не знайдено'
+                });
+            }
+
+            if (competition.status !== 'draft') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Конкурс вже опубліковано або має інший статус'
+                });
+            }
+
+            competition.status = 'published';
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Конкурс успішно опубліковано',
+                competition: competition
+            });
+        }
+
+        // DB MODE
+        const result = await pool.query(
+            `UPDATE competitions SET status = 'published', updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $1 AND status = 'draft' 
+             RETURNING *`,
+            [id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Конкурс не знайдено або вже опубліковано'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Конкурс успішно опубліковано',
+            competition: result.rows[0]
+        });
+    } catch (error) {
+        console.error('Помилка публікації конкурсу:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Внутрішня помилка сервера'
+        });
+    }
+});
+
 // Функція для пошуку вільного порту
 const startServer = (port) => {
     const server = app.listen(port, () => {
@@ -1646,7 +2027,7 @@ const startServer = (port) => {
 
     server.on('error', (err) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`Порт ${port} зайнятий, спроба порту ${port + 1}...`);
+            console.log(`Пор�� ${port} зайнятий, спроба порту ${port + 1}...`);
             startServer(port + 1);
         } else {
             console.error('Помилка сервера:', err);

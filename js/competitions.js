@@ -40,9 +40,17 @@ const LEVELS = {
 
 const STATUSES = {
     draft: 'Чернетка',
+    published: 'Опубліковано',
     active: 'Активний',
     completed: 'Завершений',
     cancelled: 'Скасований'
+};
+
+// Статуси заявок закладів
+const INSTITUTION_APP_STATUSES = {
+    pending: 'Очікує',
+    approved: 'Затверджено',
+    rejected: 'Відхилено'
 };
 
 // ==================== SVG ICONS ====================
@@ -223,6 +231,101 @@ async function deleteCompetition(competitionId) {
     }
 }
 
+/**
+ * Затвердити конкурс для проведення у закладі (deputy_principal)
+ */
+async function approveForInstitution(competitionId) {
+    if (!confirm('Затвердити проведення цього конкурсу у вашому закладі?')) return;
+    
+    const token = localStorage.getItem('authToken');
+    
+    try {
+        const response = await fetch(`/api/institution-applications/${competitionId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: 'approved', 
+                notes: 'Затверджено завучем для проведення у закладі' 
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('Конкурс затверджено для вашого закладу!', 'success');
+            await loadCompetitions();
+        } else {
+            showToast(data.message || 'Помилка затвердження конкурсу', 'error');
+        }
+    } catch (error) {
+        console.error('Помилка затвердження конкурсу:', error);
+        showToast('Помилка з\'єднання з сервером', 'error');
+    }
+}
+
+/**
+ * Відхилити конкурс для закладу (deputy_principal)
+ */
+async function rejectForInstitution(competitionId) {
+    const reason = prompt('Вкажіть причину відхилення (необов\'язково):');
+    
+    const token = localStorage.getItem('authToken');
+    
+    try {
+        const response = await fetch(`/api/institution-applications/${competitionId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                status: 'rejected', 
+                notes: reason || 'Відхилено завучем' 
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('Конкурс відхилено для вашого закладу', 'info');
+            await loadCompetitions();
+        } else {
+            showToast(data.message || 'Помилка відхилення конкурсу', 'error');
+        }
+    } catch (error) {
+        console.error('Помилка відхилення конкурсу:', error);
+        showToast('Помилка з\'єднання з сервером', 'error');
+    }
+}
+
+/**
+ * Опублікувати конкурс (methodist)
+ */
+async function publishCompetition(competitionId) {
+    if (!confirm('Опублікувати цей конкурс? Він стане доступним для всіх закладів освіти.')) return;
+    
+    const token = localStorage.getItem('authToken');
+    
+    try {
+        const response = await fetch(`/api/competitions/${competitionId}/publish`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            showToast('Конкурс успішно опубліковано!', 'success');
+            await loadCompetitions();
+        } else {
+            showToast(data.message || 'Помилка публікації конкурсу', 'error');
+        }
+    } catch (error) {
+        console.error('Помилка публікації конкурсу:', error);
+        showToast('Помилка з\'єднання з сервером', 'error');
+    }
+}
+
 // ==================== РЕНДЕРИНГ ====================
 function renderPage() {
     const role = currentUser.role?.name || 'student';
@@ -389,6 +492,11 @@ function renderCompetitionCard(competition, role) {
             <button class="btn btn-secondary btn-sm" onclick="editCompetition(${competition.id})">
                 ${ICONS.edit}
             </button>
+            ${competition.status === 'draft' && hasPermission('publish_competition') ? `
+                <button class="btn btn-accent btn-sm" onclick="publishCompetition(${competition.id})" style="background: var(--accent); color: white;">
+                    Опублікувати
+                </button>
+            ` : ''}
             ${hasPermission('delete_competition') ? `
                 <button class="btn btn-secondary btn-sm" onclick="deleteCompetition(${competition.id})" style="color: var(--error);">
                     ${ICONS.trash}
@@ -401,6 +509,38 @@ function renderCompetitionCard(competition, role) {
                 ${ICONS['clipboard-check']} Оцінити
             </button>
         `;
+    } else if (role === 'deputy_principal') {
+        // Завуч - показуємо статус затвердження для закладу
+        const instAppStatus = competition.institution_application_status;
+        
+        if (instAppStatus === 'approved') {
+            actionButtons = `
+                <button class="btn btn-secondary btn-sm" onclick="viewCompetition(${competition.id})">
+                    ${ICONS.eye}
+                </button>
+                <span class="badge badge-status approved" style="margin-left: 0.5rem;">Затверджено</span>
+            `;
+        } else if (instAppStatus === 'rejected') {
+            actionButtons = `
+                <button class="btn btn-secondary btn-sm" onclick="viewCompetition(${competition.id})">
+                    ${ICONS.eye}
+                </button>
+                <span class="badge badge-status rejected" style="margin-left: 0.5rem;">Відхилено</span>
+            `;
+        } else {
+            // Pending або не має заявки - показуємо кнопки затвердження
+            actionButtons = `
+                <button class="btn btn-secondary btn-sm" onclick="viewCompetition(${competition.id})">
+                    ${ICONS.eye}
+                </button>
+                <button class="btn btn-success btn-sm" onclick="approveForInstitution(${competition.id})" style="background: var(--success); color: white;">
+                    Затвердити
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="rejectForInstitution(${competition.id})" style="background: var(--error); color: white;">
+                    Відхилити
+                </button>
+            `;
+        }
     } else {
         actionButtons = `
             <button class="btn btn-secondary btn-sm" onclick="viewCompetition(${competition.id})">
@@ -500,10 +640,38 @@ function updateStats() {
     const statsBar = document.getElementById('statsBar');
     if (!statsBar) return;
 
+    const roleName = currentUser.role?.name || currentUser.role || 'student';
     const active = competitions.filter(c => c.status === 'active').length;
+    const published = competitions.filter(c => c.status === 'published').length;
     const draft = competitions.filter(c => c.status === 'draft').length;
     const completed = competitions.filter(c => c.status === 'completed').length;
     const total = competitions.length;
+
+    // Для завуча показуємо специфічну статистику
+    if (roleName === 'deputy_principal') {
+        const approved = competitions.filter(c => c.institution_application_status === 'approved').length;
+        const pending = competitions.filter(c => !c.institution_application_status || c.institution_application_status === 'pending').length;
+        
+        statsBar.innerHTML = `
+            <div class="stat-item">
+                <span class="stat-value">${total}</span>
+                <span class="stat-label">Всього</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">${approved}</span>
+                <span class="stat-label">Затверджено</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">${pending}</span>
+                <span class="stat-label">Очікують</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-value">${published + active}</span>
+                <span class="stat-label">Доступних</span>
+            </div>
+        `;
+        return;
+    }
 
     statsBar.innerHTML = `
         <div class="stat-item">
@@ -511,10 +679,10 @@ function updateStats() {
             <span class="stat-label">Всього</span>
         </div>
         <div class="stat-item">
-            <span class="stat-value">${active}</span>
+            <span class="stat-value">${active + published}</span>
             <span class="stat-label">Активних</span>
         </div>
-        ${currentUser.role?.name !== 'student' ? `
+        ${roleName !== 'student' ? `
             <div class="stat-item">
                 <span class="stat-value">${draft}</span>
                 <span class="stat-label">Чернеток</span>

@@ -137,6 +137,35 @@ const MENU_CONFIG = {
                 ]
             }
         ]
+    },
+    deputy_principal: {
+        title: 'Завуч',
+        sections: [
+            {
+                title: 'Головне',
+                items: [
+                    { id: 'dashboard', label: 'Головна', icon: 'home', active: true, href: '/dashboard.html' },
+                    { id: 'competitions', label: 'Конкурси', icon: 'trophy', href: '/competitions.html' },
+                    { id: 'institution-competitions', label: 'Конкурси закладу', icon: 'clipboard-check', badge: null }
+                ]
+            },
+            {
+                title: 'Заявки',
+                items: [
+                    { id: 'teacher-applications', label: 'Заявки вчителів', icon: 'file-text' },
+                    { id: 'student-applications', label: 'Заявки учнів', icon: 'users' },
+                    { id: 'pending-approvals', label: 'Очікують затвердження', icon: 'clock', badge: '2' }
+                ]
+            },
+            {
+                title: 'Профіль',
+                items: [
+                    { id: 'institution-info', label: 'Мій заклад', icon: 'building' },
+                    { id: 'reports', label: 'Звіти', icon: 'bar-chart-2' },
+                    { id: 'settings', label: 'Налаштування', icon: 'settings' }
+                ]
+            }
+        ]
     }
 };
 
@@ -211,6 +240,20 @@ const DASHBOARD_CONFIG = {
             { id: 'system', label: 'Система', desc: 'Налаштування', icon: 'sliders', color: 'green' },
             { id: 'logs', label: 'Логи', desc: 'Моніторинг', icon: 'terminal', color: 'purple' }
         ]
+    },
+    deputy_principal: {
+        stats: [
+            { label: 'Доступні конкурси', value: '12', icon: 'trophy', color: 'blue', change: '+3' },
+            { label: 'Затверджені', value: '5', icon: 'check-circle', color: 'green', change: null },
+            { label: 'Очікують рішення', value: '7', icon: 'clock', color: 'yellow', change: '+2' },
+            { label: 'Заявки закладу', value: '34', icon: 'file-text', color: 'purple', change: '+8' }
+        ],
+        quickActions: [
+            { id: 'approve', label: 'Затвердити конкурси', desc: '7 очікують', icon: 'clipboard-check', color: 'blue' },
+            { id: 'competitions', label: 'Конкурси', desc: 'Всі доступні', icon: 'trophy', color: 'yellow' },
+            { id: 'applications', label: 'Заявки', desc: 'Перегляд заявок', icon: 'file-text', color: 'green' },
+            { id: 'reports', label: 'Звіти', desc: 'Статистика', icon: 'bar-chart-2', color: 'purple' }
+        ]
     }
 };
 
@@ -241,6 +284,8 @@ const ICONS = {
     'check-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
     'play-circle': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>',
     'log-out': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>',
+    'building': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M12 6h.01"></path><path d="M12 10h.01"></path><path d="M12 14h.01"></path><path d="M16 10h.01"></path><path d="M16 14h.01"></path><path d="M8 10h.01"></path><path d="M8 14h.01"></path></svg>',
+    'clipboard-check': '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="m9 14 2 2 4-4"></path></svg>',
     menu: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>',
     search: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
     user: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
