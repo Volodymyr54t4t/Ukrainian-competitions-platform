@@ -645,6 +645,70 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 /**
+ * API: Простий вхід в адмін панель тільки по email
+ * POST /api/admin/login
+ */
+app.post("/api/admin/login", (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: "Email не вказано"
+            });
+        }
+
+        // Перевірка чи email є адміном
+        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+        if (!isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "Невірний email адміністратора"
+            });
+        }
+
+        // Генеруємо токен для адміна
+        const adminUser = {
+            id: 0,
+            email: email,
+            first_name: "Адміністратор",
+            last_name: "Системи",
+            role: "admin",
+            role_id: 5
+        };
+
+        const token = jwt.sign(
+            {
+                userId: adminUser.id,
+                email: adminUser.email,
+                role: adminUser.role,
+            },
+            JWT_SECRET,
+            { expiresIn: "24h" }
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Успішний вхід",
+            token,
+            user: {
+                ...adminUser,
+                role_display_name: "Адміністратор",
+                is_super_admin: true
+            }
+        });
+    } catch (error) {
+        console.error("Помилка входу адміна:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера"
+        });
+    }
+});
+
+/**
  * API: Отримання поточного користувача з бази даних
  * GET /api/auth/me
  */

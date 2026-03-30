@@ -69,19 +69,171 @@ const mockRolePermissions = {
 
 // ==================== ІНІЦІАЛІЗАЦІЯ ====================
 document.addEventListener("DOMContentLoaded", () => {
-    checkAdminAccess();
+    initAdminPage();
 });
 
-async function checkAdminAccess() {
-    const token = localStorage.getItem("auth_token");
+function initAdminPage() {
+    // Перевіряємо чи є збережений admin токен
+    const adminToken = localStorage.getItem("admin_token");
+    
+    if (adminToken) {
+        // Є токен - перевіряємо його
+        verifyAdminToken(adminToken);
+    } else {
+        // Немає токена - показуємо форму логіну
+        showLoginForm();
+    }
+    
+    // Ініціалізуємо форму логіну
+    initLoginForm();
+}
 
-    if (!token) {
-        showAccessDenied();
+function initLoginForm() {
+    const form = document.getElementById("adminLoginForm");
+    if (form) {
+        form.addEventListener("submit", handleAdminLogin);
+    }
+}
+
+async function handleAdminLogin(e) {
+    e.preventDefault();
+    
+    const emailInput = document.getElementById("adminEmail");
+    const errorEl = document.getElementById("loginError");
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    
+    const email = emailInput.value.trim();
+    
+    if (!email) {
+        showLoginError("Введіть email");
         return;
     }
+    
+    // Disable button
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Перевірка...';
+    
+    try {
+        const response = await fetch("/api/admin/login", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ email })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            showLoginError(data.message || "Невірний email адміністратора");
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> Увійти';
+            return;
+        }
+        
+        // Зберігаємо токен та дані користувача
+        localStorage.setItem("admin_token", data.token);
+        localStorage.setItem("admin_user", JSON.stringify(data.user));
+        
+        currentUser = data.user;
+        
+        // Показуємо панель
+        showAdminPanel();
+        
+    } catch (error) {
+        console.error("Login error:", error);
+        showLoginError("Помилка з'єднання з сервером");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> Увійти';
+    }
+}
+
+function showLoginError(message) {
+    const errorEl = document.getElementById("loginError");
+    errorEl.textContent = message;
+    errorEl.classList.remove("hidden");
+}
+
+async function verifyAdminToken(token) {
+    try {
+        const response = await fetch("/api/auth/me", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            // Токен невалідний
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_user");
+            showLoginForm();
+            return;
+        }
+
+        const data = await response.json();
+        
+        if (!data.success || !data.user) {
+            showLoginForm();
+            return;
+        }
+
+        currentUser = data.user;
+        
+        // Перевірка ролі admin
+        const isAdmin = currentUser.role === "admin" || currentUser.is_super_admin === true;
+        if (!isAdmin) {
+            localStorage.removeItem("admin_token");
+            localStorage.removeItem("admin_user");
+            showLoginForm();
+            return;
+        }
+
+        // Показуємо панель
+        showAdminPanel();
+        
+    } catch (error) {
+        console.error("Token verification error:", error);
+        showLoginForm();
+    }
+}
+
+function showLoginForm() {
+    document.getElementById("loadingOverlay").classList.add("hidden");
+    document.getElementById("adminLogin").classList.remove("hidden");
+    document.getElementById("accessDenied").classList.add("hidden");
+    document.getElementById("mainLayout").style.display = "none";
+}
+
+async function showAdminPanel() {
+    // Приховуємо логін форму
+    document.getElementById("adminLogin").classList.add("hidden");
+    document.getElementById("accessDenied").classList.add("hidden");
+    document.getElementById("mainLayout").style.display = "flex";
+    
+    // Ініціалізація
+    initSidebar();
+    initTabs();
+    initLogout();
+    updateUserInfo();
+    
+    // Завантаження даних
+    await loadAllData();
+    
+    // Приховання лоадера
+    hideLoading();
+}
+
+function showAccessDenied() {
+    document.getElementById("loadingOverlay").classList.add("hidden");
+    document.getElementById("adminLogin").classList.add("hidden");
+    document.getElementById("accessDenied").classList.remove("hidden");
+    document.getElementById("mainLayout").style.display = "none";
+}
 
     try {
-        // Запит до API для отримання актуальних даних користувача з бази даних
+        // Запит до API для отримання актуальних даних кори��тувача з бази даних
         const response = await fetch("/api/auth/me", {
             method: "GET",
             headers: {
@@ -160,7 +312,7 @@ async function loadAllData() {
 
 async function loadUsers() {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch("/api/admin/users", {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -183,7 +335,7 @@ async function loadUsers() {
 
 async function loadCompetitions() {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch("/api/competitions", {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -206,7 +358,7 @@ async function loadCompetitions() {
 
 async function loadRoles() {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch("/api/admin/roles", {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -227,7 +379,7 @@ async function loadRoles() {
 
 async function loadPermissions() {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch("/api/admin/permissions", {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -251,7 +403,7 @@ async function loadPermissions() {
 
 async function loadRolePermissions(roleId) {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch(`/api/admin/roles/${roleId}/permissions`, {
             headers: { "Authorization": `Bearer ${token}` }
         });
@@ -381,7 +533,7 @@ function updateUserStats() {
 
 async function changeUserRole(userId, newRoleId) {
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         const response = await fetch(`/api/admin/users/${userId}/role`, {
             method: "PUT",
             headers: {
@@ -663,7 +815,7 @@ async function savePermissions() {
     }
 
     try {
-        const token = localStorage.getItem("auth_token");
+        const token = localStorage.getItem("admin_token");
         
         // Визначаємо поточний стан дозволів
         let currentPerms = [...(rolePermissions[selectedRoleId] || [])];
@@ -810,9 +962,9 @@ function initSidebar() {
 
 function initLogout() {
     document.getElementById("logoutBtn")?.addEventListener("click", () => {
-        localStorage.removeItem("auth_token");
-        localStorage.removeItem("user_data");
-        window.location.href = "/auth.html";
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_user");
+        window.location.reload();
     });
 }
 
@@ -872,7 +1024,7 @@ function getSubjectName(subject) {
     const names = {
         mathematics: "Математика",
         physics: "Фізика",
-        informatics: "Інформатика",
+        informatics: "Інформ��тика",
         ukrainian: "Українська мова",
         chemistry: "Хімія",
         biology: "Біологія",
