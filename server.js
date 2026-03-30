@@ -659,17 +659,7 @@ app.post("/api/admin/login", (req, res) => {
             });
         }
 
-        // Перевірка чи email є адміном
-        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-
-        if (!isAdmin) {
-            return res.status(403).json({
-                success: false,
-                message: "Невірний email адміністратора"
-            });
-        }
-
-        // Генеруємо токен для адміна
+        // Генеруємо токен для адміна (без перевірки - будь-який email має доступ)
         const adminUser = {
             id: 0,
             email: email,
