@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
 function initAdminPage() {
     // Перевіряємо чи є збережений admin токен
     const adminToken = localStorage.getItem("admin_token");
-    
+
     if (adminToken) {
         // Є токен - перевіряємо його
         verifyAdminToken(adminToken);
@@ -83,7 +83,7 @@ function initAdminPage() {
         // Немає токена - показуємо форму логіну
         showLoginForm();
     }
-    
+
     // Ініціалізуємо форму логіну
     initLoginForm();
 }
@@ -97,22 +97,22 @@ function initLoginForm() {
 
 async function handleAdminLogin(e) {
     e.preventDefault();
-    
+
     const emailInput = document.getElementById("adminEmail");
     const errorEl = document.getElementById("loginError");
     const submitBtn = e.target.querySelector('button[type="submit"]');
-    
+
     const email = emailInput.value.trim();
-    
+
     if (!email) {
         showLoginError("Введіть email");
         return;
     }
-    
+
     // Disable button
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Перевірка...';
-    
+
     try {
         const response = await fetch("/api/admin/login", {
             method: "POST",
@@ -121,25 +121,25 @@ async function handleAdminLogin(e) {
             },
             body: JSON.stringify({ email })
         });
-        
+
         const data = await response.json();
-        
+
         if (!response.ok || !data.success) {
             showLoginError(data.message || "Невірний email адміністратора");
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg> Увійти';
             return;
         }
-        
+
         // Зберігаємо токен та дані користувача
         localStorage.setItem("admin_token", data.token);
         localStorage.setItem("admin_user", JSON.stringify(data.user));
-        
+
         currentUser = data.user;
-        
+
         // Показуємо панель
         showAdminPanel();
-        
+
     } catch (error) {
         console.error("Login error:", error);
         showLoginError("Помилка з'єднання з сервером");
@@ -173,14 +173,14 @@ async function verifyAdminToken(token) {
         }
 
         const data = await response.json();
-        
+
         if (!data.success || !data.user) {
             showLoginForm();
             return;
         }
 
         currentUser = data.user;
-        
+
         // Перевірка ролі admin
         const isAdmin = currentUser.role === "admin" || currentUser.is_super_admin === true;
         if (!isAdmin) {
@@ -192,7 +192,7 @@ async function verifyAdminToken(token) {
 
         // Показуємо панель
         showAdminPanel();
-        
+
     } catch (error) {
         console.error("Token verification error:", error);
         showLoginForm();
@@ -211,16 +211,16 @@ async function showAdminPanel() {
     document.getElementById("adminLogin").classList.add("hidden");
     document.getElementById("accessDenied").classList.add("hidden");
     document.getElementById("mainLayout").style.display = "flex";
-    
+
     // Ініціалізація
     initSidebar();
     initTabs();
     initLogout();
     updateUserInfo();
-    
+
     // Завантаження даних
     await loadAllData();
-    
+
     // Приховання лоадера
     hideLoading();
 }
@@ -232,63 +232,63 @@ function showAccessDenied() {
     document.getElementById("mainLayout").style.display = "none";
 }
 
-    try {
-        // Запит до API для отримання актуальних даних кори��тувача з бази даних
-        const response = await fetch("/api/auth/me", {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (!response.ok) {
-            // Токен невалідний або користувача не знайдено
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("user_data");
-            showAccessDenied();
-            return;
+try {
+    // Запит до API для отримання актуальних даних кори��тувача з бази даних
+    const response = await fetch("/api/auth/me", {
+        method: "GET",
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
         }
+    });
 
-        const data = await response.json();
-        
-        if (!data.success || !data.user) {
-            showAccessDenied();
-            return;
-        }
-
-        currentUser = data.user;
-        
-        // Перевірка ролі admin з бази даних або is_super_admin
-        const isAdmin = currentUser.role === "admin" || currentUser.is_super_admin === true;
-        if (!isAdmin) {
-            showAccessDenied();
-            return;
-        }
-
-        // Оновлюємо локальні дані користувача
-        localStorage.setItem("user_data", JSON.stringify(currentUser));
-
-        // Відображення панелі
-        document.getElementById("accessDenied").classList.add("hidden");
-        document.getElementById("mainLayout").style.display = "flex";
-        
-        // Ініціалізація
-        initSidebar();
-        initTabs();
-        initLogout();
-        updateUserInfo();
-        
-        // Завантаження даних
-        await loadAllData();
-        
-        // Приховання лоадера
-        hideLoading();
-    } catch (error) {
-        console.error("Error checking access:", error);
+    if (!response.ok) {
+        // Токен невалідний або користувача не знайдено
+        localStorage.removeItem("auth_token");
+        localStorage.removeItem("user_data");
         showAccessDenied();
+        return;
     }
+
+    const data = await response.json();
+
+    if (!data.success || !data.user) {
+        showAccessDenied();
+        return;
+    }
+
+    currentUser = data.user;
+
+    // Перевірка ролі admin з бази даних або is_super_admin
+    const isAdmin = currentUser.role === "admin" || currentUser.is_super_admin === true;
+    if (!isAdmin) {
+        showAccessDenied();
+        return;
+    }
+
+    // Оновлюємо локальні дані користувача
+    localStorage.setItem("user_data", JSON.stringify(currentUser));
+
+    // Відображення панелі
+    document.getElementById("accessDenied").classList.add("hidden");
+    document.getElementById("mainLayout").style.display = "flex";
+
+    // Ініціалізація
+    initSidebar();
+    initTabs();
+    initLogout();
+    updateUserInfo();
+
+    // Завантаження даних
+    await loadAllData();
+
+    // Приховання лоадера
+    hideLoading();
+} catch (error) {
+    console.error("Error checking access:", error);
+    showAccessDenied();
 }
+
 
 function showAccessDenied() {
     document.getElementById("loadingOverlay").classList.add("hidden");
@@ -433,7 +433,7 @@ function renderUsers(filterRole = "all", searchQuery = "") {
     // Пошук
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        filteredUsers = filteredUsers.filter(u => 
+        filteredUsers = filteredUsers.filter(u =>
             u.first_name.toLowerCase().includes(query) ||
             u.last_name.toLowerCase().includes(query) ||
             u.email.toLowerCase().includes(query)
@@ -499,7 +499,7 @@ function renderUsers(filterRole = "all", searchQuery = "") {
 function renderUserItem(user) {
     const initials = getInitials(user.first_name, user.last_name);
     const createdAt = formatDate(user.created_at);
-    
+
     return `
         <div class="user-item" data-user-id="${user.id}">
             <div class="user-info-left">
@@ -580,7 +580,7 @@ function renderCompetitions(filterStatus = "all", filterSubject = "all", searchQ
 
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        filtered = filtered.filter(c => 
+        filtered = filtered.filter(c =>
             c.title.toLowerCase().includes(query) ||
             (c.description && c.description.toLowerCase().includes(query))
         );
@@ -633,10 +633,10 @@ function updateCompetitionStats() {
 // ==================== РЕНДЕРИНГ СЕКЦІЙ ====================
 function renderSections() {
     const container = document.getElementById("sectionsGrid");
-    
+
     // Збираємо всі унікальні секції з конкурсів
     const sectionsMap = {};
-    
+
     allCompetitions.forEach(comp => {
         if (comp.sections && Array.isArray(comp.sections)) {
             comp.sections.forEach(section => {
@@ -686,10 +686,10 @@ function renderSections() {
 // ==================== РЕНДЕРИНГ РОЛЕЙ ТА ДОЗВОЛІВ ====================
 function renderRoles() {
     const container = document.getElementById("rolesList");
-    
+
     // Фільтруємо, щоб не показувати admin
     const editableRoles = allRoles.filter(r => r.name !== "admin");
-    
+
     container.innerHTML = editableRoles.map(role => `
         <div class="role-item ${selectedRoleId === role.id ? 'active' : ''}" data-role-id="${role.id}">
             <div class="role-item-icon" style="background: ${getRoleColor(role.name)}; color: white;">
@@ -727,7 +727,7 @@ function renderRoles() {
 function selectRole(roleId) {
     selectedRoleId = roleId;
     pendingPermissionChanges = {};
-    
+
     // Оновити активний стан
     document.querySelectorAll(".role-item").forEach(item => {
         item.classList.toggle("active", parseInt(item.dataset.roleId) === roleId);
@@ -816,7 +816,7 @@ async function savePermissions() {
 
     try {
         const token = localStorage.getItem("admin_token");
-        
+
         // Визначаємо поточний стан дозволів
         let currentPerms = [...(rolePermissions[selectedRoleId] || [])];
 
@@ -870,12 +870,12 @@ async function savePermissions() {
 // ==================== НАВІГАЦІЯ ТА TABS ====================
 function initTabs() {
     const navItems = document.querySelectorAll(".nav-item[data-tab]");
-    
+
     navItems.forEach(item => {
         item.addEventListener("click", () => {
             const tabId = item.dataset.tab;
             switchTab(tabId);
-            
+
             // Оновити активний стан навігації
             navItems.forEach(ni => ni.classList.remove("active"));
             item.classList.add("active");
@@ -1073,10 +1073,10 @@ function showToast(message, type = "success") {
     toast.className = `toast ${type}`;
     toast.innerHTML = `
         <div class="toast-icon">
-            ${type === "success" 
-                ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
-                : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
-            }
+            ${type === "success"
+            ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+            : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
+        }
         </div>
         <span class="toast-message">${message}</span>
     `;
