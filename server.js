@@ -642,6 +642,106 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 /**
+ * API: Отримання поточного користувача з бази даних
+ * GET /api/auth/me
+ */
+app.get("/api/auth/me", (req, res, next) => {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+        return res.status(401).json({
+            success: false,
+            message: "Токен авторизації не надано",
+        });
+    }
+
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+        if (err) {
+            return res.status(403).json({
+                success: false,
+                message: "Невалідний або прострочений токен",
+            });
+        }
+
+        try {
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const mockUser = mockUsers.find(u => u.id === decoded.userId);
+                if (!mockUser) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Користувача не знайдено",
+                    });
+                }
+                const mockRole = mockRoles.find(r => r.id === mockUser.role_id);
+                return res.status(200).json({
+                    success: true,
+                    user: {
+                        id: mockUser.id,
+                        first_name: mockUser.first_name,
+                        last_name: mockUser.last_name,
+                        email: mockUser.email,
+                        role: mockUser.role,
+                        role_id: mockUser.role_id,
+                        role_display_name: mockRole?.display_name || "Користувач",
+                        permissions: mockPermissions[mockUser.role_id] || [],
+                    },
+                });
+            }
+
+            // Отримуємо актуальні дані користувача з бази
+            const result = await pool.query(
+                `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id,
+                        r.name as role_name, r.display_name as role_display_name
+                 FROM users u
+                 LEFT JOIN roles r ON u.role_id = r.id
+                 WHERE u.id = $1`,
+                [decoded.userId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Користувача не знайдено",
+                });
+            }
+
+            const user = result.rows[0];
+
+            // Отримуємо дозволи користувача
+            const permissions = await pool.query(
+                `SELECT p.name, p.display_name, p.category
+                 FROM permissions p
+                 JOIN role_permissions rp ON p.id = rp.permission_id
+                 WHERE rp.role_id = $1`,
+                [user.role_id]
+            );
+
+            res.status(200).json({
+                success: true,
+                user: {
+                    id: user.id,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
+                    email: user.email,
+                    role: user.role,
+                    role_id: user.role_id,
+                    role_display_name: user.role_display_name || "Користувач",
+                    permissions: permissions.rows,
+                },
+            });
+        } catch (error) {
+            console.error("Помилка отримання користувача:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера",
+            });
+        }
+    });
+});
+
+/**
  * Middleware: Перевірка JWT токена
  */
 const authenticateToken = (req, res, next) => {
@@ -1661,7 +1761,7 @@ app.put(
                 }
             });
         } catch (error) {
-            console.error("Помилка зміни ролі:", error);
+            console.error("Помилка зміни рол��:", error);
             res.status(500).json({
                 success: false,
                 message: "Внутрішня помилка сервера"
@@ -1854,7 +1954,7 @@ app.put(
 
             res.status(200).json({
                 success: true,
-                message: "Дозволи успішно оновлено"
+                message: "Д��зволи успішно оновлено"
             });
         } catch (error) {
             console.error("Помилка оновлення дозволів:", error);

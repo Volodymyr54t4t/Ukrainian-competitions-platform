@@ -74,21 +74,47 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function checkAdminAccess() {
     const token = localStorage.getItem("auth_token");
-    const userData = localStorage.getItem("user_data");
 
-    if (!token || !userData) {
+    if (!token) {
         showAccessDenied();
         return;
     }
 
     try {
-        currentUser = JSON.parse(userData);
+        // Запит до API для отримання актуальних даних користувача з бази даних
+        const response = await fetch("/api/auth/me", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (!response.ok) {
+            // Токен невалідний або користувача не знайдено
+            localStorage.removeItem("auth_token");
+            localStorage.removeItem("user_data");
+            showAccessDenied();
+            return;
+        }
+
+        const data = await response.json();
         
-        // Перевірка ролі admin
+        if (!data.success || !data.user) {
+            showAccessDenied();
+            return;
+        }
+
+        currentUser = data.user;
+        
+        // Перевірка ролі admin з бази даних
         if (currentUser.role !== "admin") {
             showAccessDenied();
             return;
         }
+
+        // Оновлюємо локальні дані користувача
+        localStorage.setItem("user_data", JSON.stringify(currentUser));
 
         // Відображення панелі
         document.getElementById("accessDenied").classList.add("hidden");
@@ -498,7 +524,7 @@ function renderSections() {
         container.innerHTML = `
             <div class="empty-permissions">
                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                <p>Секцій поки немає</p>
+                <p>��екцій поки немає</p>
             </div>
         `;
     }
