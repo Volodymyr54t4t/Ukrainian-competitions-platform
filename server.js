@@ -25,6 +25,9 @@ app.use(express.static(path.join(__dirname)));
 // Mock режим - працює без бази даних для демонстрації
 const MOCK_MODE = !process.env.DATABASE_URL;
 
+// Email адміністратора з .env (завжди має доступ до адмін панелі)
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@yepku.com";
+
 // Mock дані для демонстрації
 const mockUsers = [
     {
@@ -675,6 +678,13 @@ app.get("/api/auth/me", (req, res, next) => {
                     });
                 }
                 const mockRole = mockRoles.find(r => r.id === mockUser.role_id);
+                
+                // Перевірка чи email є адміном з .env
+                const isAdminByEmail = mockUser.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+                const effectiveRole = isAdminByEmail ? "admin" : mockUser.role;
+                const effectiveRoleId = isAdminByEmail ? 5 : mockUser.role_id;
+                const effectiveRoleDisplayName = isAdminByEmail ? "Адміністратор" : (mockRole?.display_name || "Користувач");
+                
                 return res.status(200).json({
                     success: true,
                     user: {
@@ -682,10 +692,11 @@ app.get("/api/auth/me", (req, res, next) => {
                         first_name: mockUser.first_name,
                         last_name: mockUser.last_name,
                         email: mockUser.email,
-                        role: mockUser.role,
-                        role_id: mockUser.role_id,
-                        role_display_name: mockRole?.display_name || "Користувач",
-                        permissions: mockPermissions[mockUser.role_id] || [],
+                        role: effectiveRole,
+                        role_id: effectiveRoleId,
+                        role_display_name: effectiveRoleDisplayName,
+                        permissions: mockPermissions[effectiveRoleId] || [],
+                        is_super_admin: isAdminByEmail,
                     },
                 });
             }
@@ -708,15 +719,27 @@ app.get("/api/auth/me", (req, res, next) => {
             }
 
             const user = result.rows[0];
+            
+            // Перевірка чи email є адміном з .env
+            const isAdminByEmail = user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+            const effectiveRole = isAdminByEmail ? "admin" : user.role;
+            const effectiveRoleId = isAdminByEmail ? 5 : user.role_id;
 
-            // Отримуємо дозволи користувача
-            const permissions = await pool.query(
-                `SELECT p.name, p.display_name, p.category
-                 FROM permissions p
-                 JOIN role_permissions rp ON p.id = rp.permission_id
-                 WHERE rp.role_id = $1`,
-                [user.role_id]
-            );
+            // Отримуємо дозволи користувача (для адміна - всі дозволи)
+            let permissions;
+            if (isAdminByEmail) {
+                permissions = await pool.query(
+                    `SELECT p.name, p.display_name, p.category FROM permissions p`
+                );
+            } else {
+                permissions = await pool.query(
+                    `SELECT p.name, p.display_name, p.category
+                     FROM permissions p
+                     JOIN role_permissions rp ON p.id = rp.permission_id
+                     WHERE rp.role_id = $1`,
+                    [user.role_id]
+                );
+            }
 
             res.status(200).json({
                 success: true,
@@ -725,10 +748,11 @@ app.get("/api/auth/me", (req, res, next) => {
                     first_name: user.first_name,
                     last_name: user.last_name,
                     email: user.email,
-                    role: user.role,
-                    role_id: user.role_id,
-                    role_display_name: user.role_display_name || "Користувач",
+                    role: effectiveRole,
+                    role_id: effectiveRoleId,
+                    role_display_name: isAdminByEmail ? "Адміністратор" : (user.role_display_name || "Користувач"),
                     permissions: permissions.rows,
+                    is_super_admin: isAdminByEmail,
                 },
             });
         } catch (error) {
@@ -831,10 +855,27 @@ const requireRole = (allowedRoles) => {
         try {
             const userId = req.user.userId;
             const userRole = req.user.role;
+            const userEmail = req.user.email;
+
+            // Перевірка чи email є супер-адміном з .env
+            const isAdminByEmail = userEmail && userEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+            
+            // Якщо потрібна роль admin і користувач є супер-адміном по email - пропускаємо
+            if (allowedRoles.includes("admin") && isAdminByEmail) {
+                return next();
+            }
 
             // MOCK MODE
             if (MOCK_MODE) {
-                if (!allowedRoles.includes(userRole)) {
+                const mockUser = mockUsers.find(u => u.id === userId);
+                const mockUserEmail = mockUser?.email;
+                const isMockAdminByEmail = mockUserEmail && mockUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+                
+                if (isMockAdminByEmail && allowedRoles.includes("admin")) {
+                    return next();
+                }
+                
+                if (!allowedRoles.includes(userRole) && !isMockAdminByEmail) {
                     return res.status(403).json({
                         success: false,
                         message: "Доступ заборонено для вашої ролі",
@@ -844,17 +885,29 @@ const requireRole = (allowedRoles) => {
             }
 
             const result = await pool.query(
-                `SELECT r.name as role_name
+                `SELECT r.name as role_name, u.email
                  FROM users u
                  JOIN roles r ON u.role_id = r.id
                  WHERE u.id = $1`,
                 [userId],
             );
 
-            if (
-                result.rows.length === 0 ||
-                !allowedRoles.includes(result.rows[0].role_name)
-            ) {
+            if (result.rows.length === 0) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Доступ заборонено для вашої ролі",
+                });
+            }
+            
+            const dbEmail = result.rows[0].email;
+            const isDbAdminByEmail = dbEmail && dbEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+            
+            // Якщо email з бази є супер-адміном і потрібна роль admin - пропускаємо
+            if (isDbAdminByEmail && allowedRoles.includes("admin")) {
+                return next();
+            }
+
+            if (!allowedRoles.includes(result.rows[0].role_name)) {
                 return res.status(403).json({
                     success: false,
                     message: "Доступ заборонено для вашої ролі",

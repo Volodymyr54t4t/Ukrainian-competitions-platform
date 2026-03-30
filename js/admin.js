@@ -107,8 +107,9 @@ async function checkAdminAccess() {
 
         currentUser = data.user;
         
-        // Перевірка ролі admin з бази даних
-        if (currentUser.role !== "admin") {
+        // Перевірка ролі admin з бази даних або is_super_admin
+        const isAdmin = currentUser.role === "admin" || currentUser.is_super_admin === true;
+        if (!isAdmin) {
             showAccessDenied();
             return;
         }
