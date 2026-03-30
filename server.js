@@ -1537,6 +1537,340 @@ app.get(
     },
 );
 
+// ==================== ADMIN API ENDPOINTS ====================
+
+/**
+ * API: Отримання всіх користувачів (Admin only)
+ * GET /api/admin/users
+ */
+app.get(
+    "/api/admin/users",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            // MOCK MODE
+            if (MOCK_MODE) {
+                return res.status(200).json({
+                    success: true,
+                    users: mockUsers.map(u => ({
+                        ...u,
+                        role_display_name: mockRoles.find(r => r.id === u.role_id)?.display_name || "Користувач"
+                    }))
+                });
+            }
+
+            const result = await pool.query(
+                `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
+                        r.name as role_name, r.display_name as role_display_name
+                 FROM users u
+                 LEFT JOIN roles r ON u.role_id = r.id
+                 ORDER BY u.created_at DESC`
+            );
+
+            res.status(200).json({
+                success: true,
+                users: result.rows
+            });
+        } catch (error) {
+            console.error("Помилка отримання користувачів:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+/**
+ * API: Зміна ролі користувача (Admin only)
+ * PUT /api/admin/users/:userId/role
+ */
+app.put(
+    "/api/admin/users/:userId/role",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { role_id } = req.body;
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const user = mockUsers.find(u => u.id === parseInt(userId));
+                const role = mockRoles.find(r => r.id === parseInt(role_id));
+                
+                if (!user) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "Користувача не знайдено"
+                    });
+                }
+                
+                if (!role) {
+                    return res.status(400).json({
+                        success: false,
+                        message: "Роль не знайдено"
+                    });
+                }
+
+                user.role_id = role.id;
+                user.role = role.name;
+                user.role_display_name = role.display_name;
+
+                return res.status(200).json({
+                    success: true,
+                    message: "Роль користувача успішно змінено",
+                    user
+                });
+            }
+
+            // Перевіряємо чи існує роль
+            const roleCheck = await pool.query(
+                "SELECT id, name, display_name FROM roles WHERE id = $1",
+                [role_id]
+            );
+            
+            if (roleCheck.rows.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Роль не знайдено"
+                });
+            }
+
+            // Оновлюємо роль користувача
+            const result = await pool.query(
+                `UPDATE users SET role_id = $1, role = $2 WHERE id = $3
+                 RETURNING id, first_name, last_name, email, role, role_id`,
+                [role_id, roleCheck.rows[0].name, userId]
+            );
+
+            if (result.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Користувача не знайдено"
+                });
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Роль користувача успішно змінено",
+                user: {
+                    ...result.rows[0],
+                    role_display_name: roleCheck.rows[0].display_name
+                }
+            });
+        } catch (error) {
+            console.error("Помилка зміни ролі:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+/**
+ * API: Отримання всіх ролей (Admin only)
+ * GET /api/admin/roles
+ */
+app.get(
+    "/api/admin/roles",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            // MOCK MODE
+            if (MOCK_MODE) {
+                return res.status(200).json({
+                    success: true,
+                    roles: mockRoles
+                });
+            }
+
+            const result = await pool.query(
+                "SELECT id, name, display_name, description FROM roles ORDER BY id"
+            );
+
+            res.status(200).json({
+                success: true,
+                roles: result.rows
+            });
+        } catch (error) {
+            console.error("Помилка отримання ролей:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+/**
+ * API: Отримання всіх дозволів (Admin only)
+ * GET /api/admin/permissions
+ */
+app.get(
+    "/api/admin/permissions",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const mockAllPermissions = [
+                    { id: 1, name: "view_competitions", display_name: "Перегляд конкурсів", description: "Перегляд списку конкурсів", category: "competitions" },
+                    { id: 2, name: "create_competition", display_name: "Створення конкурсів", description: "Створення нових конкурсів", category: "competitions" },
+                    { id: 3, name: "edit_competition", display_name: "Редагування конкурсів", description: "Редагування існуючих конкурсів", category: "competitions" },
+                    { id: 4, name: "delete_competition", display_name: "Видалення конкурсів", description: "Видалення конкурсів", category: "competitions" },
+                    { id: 5, name: "manage_applications", display_name: "Управління заявками", description: "Обробка заявок на конкурси", category: "applications" },
+                    { id: 6, name: "submit_application", display_name: "Подання заявок", description: "Подання заявок на участь", category: "applications" },
+                    { id: 7, name: "view_submissions", display_name: "Перегляд робіт", description: "Перегляд поданих робіт", category: "submissions" },
+                    { id: 8, name: "evaluate_works", display_name: "Оцінювання робіт", description: "Оцінювання робіт учасників", category: "judging" },
+                    { id: 9, name: "manage_users", display_name: "Управління користувачами", description: "Керування обліковими записами", category: "users" },
+                    { id: 10, name: "manage_students", display_name: "Керування учнями", description: "Управління своїми учнями", category: "users" },
+                    { id: 11, name: "view_reports", display_name: "Перегляд звітів", description: "Доступ до статистики", category: "reports" },
+                    { id: 12, name: "manage_roles", display_name: "Керування ролями", description: "Налаштування прав доступу", category: "system" },
+                    { id: 13, name: "system_settings", display_name: "Налаштування системи", description: "Системні налаштування", category: "system" },
+                ];
+                return res.status(200).json({
+                    success: true,
+                    permissions: mockAllPermissions
+                });
+            }
+
+            const result = await pool.query(
+                "SELECT id, name, display_name, description, category FROM permissions ORDER BY category, name"
+            );
+
+            res.status(200).json({
+                success: true,
+                permissions: result.rows
+            });
+        } catch (error) {
+            console.error("Помилка отримання дозволів:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+/**
+ * API: Отримання дозволів для ролі (Admin only)
+ * GET /api/admin/roles/:roleId/permissions
+ */
+app.get(
+    "/api/admin/roles/:roleId/permissions",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            const { roleId } = req.params;
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const mockRolePermissions = {
+                    1: [1, 6, 7], // student
+                    2: [1, 2, 3, 7, 10, 11], // teacher
+                    3: [1, 2, 3, 5, 7, 11], // methodist
+                    4: [1, 7, 8], // judge
+                    5: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13], // admin
+                };
+                return res.status(200).json({
+                    success: true,
+                    permissions: (mockRolePermissions[roleId] || []).map(id => ({ id }))
+                });
+            }
+
+            const result = await pool.query(
+                `SELECT p.id, p.name, p.display_name, p.description, p.category
+                 FROM permissions p
+                 JOIN role_permissions rp ON p.id = rp.permission_id
+                 WHERE rp.role_id = $1
+                 ORDER BY p.category, p.name`,
+                [roleId]
+            );
+
+            res.status(200).json({
+                success: true,
+                permissions: result.rows
+            });
+        } catch (error) {
+            console.error("Помилка отримання дозволів ролі:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+/**
+ * API: Оновлення дозволів для ролі (Admin only)
+ * PUT /api/admin/roles/:roleId/permissions
+ */
+app.put(
+    "/api/admin/roles/:roleId/permissions",
+    authenticateToken,
+    requireRole(["admin"]),
+    async (req, res) => {
+        try {
+            const { roleId } = req.params;
+            const { permissions } = req.body;
+
+            // Забороняємо зміну дозволів адміна
+            const role = mockRoles.find(r => r.id === parseInt(roleId));
+            if (role && role.name === "admin") {
+                return res.status(403).json({
+                    success: false,
+                    message: "Неможливо змінити дозволи адміністратора"
+                });
+            }
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                return res.status(200).json({
+                    success: true,
+                    message: "Дозволи успішно оновлено"
+                });
+            }
+
+            // Видаляємо старі дозволи
+            await pool.query(
+                "DELETE FROM role_permissions WHERE role_id = $1",
+                [roleId]
+            );
+
+            // Додаємо нові дозволи
+            if (permissions && permissions.length > 0) {
+                const values = permissions.map((permId, i) => `($1, $${i + 2})`).join(", ");
+                await pool.query(
+                    `INSERT INTO role_permissions (role_id, permission_id) VALUES ${values}`,
+                    [roleId, ...permissions]
+                );
+            }
+
+            res.status(200).json({
+                success: true,
+                message: "Дозволи успішно оновлено"
+            });
+        } catch (error) {
+            console.error("Помилка оновлення дозволів:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера"
+            });
+        }
+    }
+);
+
+// Маршрут для admin панелі
+app.get("/admin.html", (req, res) => {
+    res.sendFile(path.join(__dirname, "admin.html"));
+});
+
 // Маршрут для головної сторінки авторизації
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "auth.html"));

@@ -181,14 +181,19 @@ const MENU_CONFIG = {
                         active: true,
                         href: "/dashboard.html",
                     },
-                    { id: "overview", label: "Огляд системи", icon: "activity" },
+                    {
+                        id: "admin-panel",
+                        label: "Адмін панель",
+                        icon: "shield",
+                        href: "/admin.html",
+                    },
                 ],
             },
             {
-                title: "Користувачі",
+                title: "Управління",
                 items: [
-                    { id: "users", label: "Користувачі", icon: "users" },
-                    { id: "roles", label: "Ролі та дозволи", icon: "shield" },
+                    { id: "users", label: "Користувачі", icon: "users", href: "/admin.html" },
+                    { id: "roles", label: "Ролі та дозволи", icon: "shield", href: "/admin.html" },
                 ],
             },
             {
@@ -408,7 +413,7 @@ const DASHBOARD_CONFIG = {
                 change: "+8",
             },
             {
-                label: "Оцінено сьогодні",
+                label: "Оцінено сього��ні",
                 value: "5",
                 icon: "check-square",
                 color: "green",
