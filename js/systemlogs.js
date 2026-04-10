@@ -33,7 +33,7 @@ async function checkAuth() {
     }
     
     try {
-        const response = await fetch('/api/profile', {
+        const response = await fetch('/api/auth/me', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -46,8 +46,9 @@ async function checkAuth() {
         const data = await response.json();
         currentUser = data.user;
         
-        // Перевірка ролі admin
-        if (currentUser.role !== 'admin') {
+        // Перевірка ролі admin (підтримка обох форматів відповіді)
+        const userRole = typeof currentUser.role === 'object' ? currentUser.role.name : currentUser.role;
+        if (userRole !== 'admin') {
             showAccessDenied();
             return;
         }

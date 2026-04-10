@@ -2099,7 +2099,7 @@ app.post(
             if (password.length < 6) {
                 return res.status(400).json({
                     success: false,
-                    message: "Пароль повинен містити мінімум 6 символів",
+                    message: "Пар��ль повинен містити мінімум 6 символів",
                 });
             }
 
@@ -2435,15 +2435,21 @@ app.get("/service-worker.js", (req, res) => {
 
 // Функція для пошуку вільного порту
 const startServer = (port) => {
-    const server = app.listen(port, () => {
-        console.log(`Сервер запущено на порту ${port}`);
-        console.log(`Відкрийте http://localhost:${port} для доступу до платформи`);
+    const numPort = parseInt(port, 10);
+    if (numPort >= 65535) {
+        console.error("Не вдалося знайти вільний порт");
+        return;
+    }
+    
+    const server = app.listen(numPort, () => {
+        console.log(`Сервер запущено на порту ${numPort}`);
+        console.log(`Відкрийте http://localhost:${numPort} для доступу до платформи`);
     });
 
     server.on("error", (err) => {
         if (err.code === "EADDRINUSE") {
-            console.log(`Порт ${port} зайнятий, спроба порту ${port + 1}...`);
-            startServer(port + 1);
+            console.log(`Порт ${numPort} зайнятий, спроба порту ${numPort + 1}...`);
+            startServer(numPort + 1);
         } else {
             console.error("Помилка сервера:", err);
         }
