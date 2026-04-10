@@ -206,7 +206,12 @@ const MENU_CONFIG = {
                         href: "/competitions.html",
                     },
                     { id: "system-settings", label: "Налаштування", icon: "sliders" },
-                    { id: "logs", label: "Логи системи", icon: "terminal" },
+                    { 
+                        id: "logs", 
+                        label: "Логи системи", 
+                        icon: "terminal",
+                        href: "/systemlogs.html",
+                    },
                     { id: "backup", label: "Резервні копії", icon: "database" },
                 ],
             },
