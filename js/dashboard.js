@@ -185,9 +185,14 @@ const MENU_CONFIG = {
                 ],
             },
             {
-                title: "Користувачі",
+                title: "Адміністрування",
                 items: [
-                    { id: "users", label: "Користувачі", icon: "users" },
+                    { 
+                        id: "users", 
+                        label: "Користувачі", 
+                        icon: "users",
+                        href: "/users.html",
+                    },
                     { id: "roles", label: "Ролі та дозволи", icon: "shield" },
                 ],
             },
