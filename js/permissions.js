@@ -197,7 +197,7 @@ async function loadRoles() {
 }
 
 /**
- * Отримати дефолтні ролі
+ * ��тримати дефолтні ролі
  */
 function getDefaultRoles() {
     return [
@@ -348,17 +348,19 @@ function renderPermissionsTable() {
 }
 
 /**
- * Обробка зміни права доступу
+ * Обробка зміни права доступу (автоматичне збереження)
  */
-function handlePermissionChange(checkbox) {
+async function handlePermissionChange(checkbox) {
     const pageId = checkbox.dataset.page;
     const roleName = checkbox.dataset.role;
+    const canAccess = checkbox.checked;
 
+    // Відразу оновлюємо локальний стан
     if (!pagePermissions[pageId]) {
         pagePermissions[pageId] = [];
     }
 
-    if (checkbox.checked) {
+    if (canAccess) {
         if (!pagePermissions[pageId].includes(roleName)) {
             pagePermissions[pageId].push(roleName);
         }
@@ -366,86 +368,112 @@ function handlePermissionChange(checkbox) {
         pagePermissions[pageId] = pagePermissions[pageId].filter(r => r !== roleName);
     }
 
-    // Перевіряємо чи є незбережені зміни
-    checkForChanges();
-}
-
-/**
- * Перевірка наявності незбережених змін
- */
-function checkForChanges() {
-    const currentStr = JSON.stringify(pagePermissions);
-    const originalStr = JSON.stringify(originalPermissions);
-    hasUnsavedChanges = currentStr !== originalStr;
-
-    const saveBtn = document.getElementById('savePermissionsBtn');
-    if (hasUnsavedChanges) {
-        saveBtn.classList.add('has-changes');
-    } else {
-        saveBtn.classList.remove('has-changes');
-    }
-}
-
-/**
- * Збереження прав доступу
- */
-async function savePermissions() {
-    const saveBtn = document.getElementById('savePermissionsBtn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `
-        <div class="loading-spinner small" style="width: 20px; height: 20px; border-width: 2px;"></div>
-        Збереження...
-    `;
+    // Показуємо індикатор збереження
+    checkbox.disabled = true;
+    const cell = checkbox.closest('td');
+    cell.classList.add('saving');
 
     try {
         const token = localStorage.getItem('authToken');
         const response = await fetch('/api/admin/page-permissions', {
-            method: 'POST',
+            method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ permissions: pagePermissions })
+            body: JSON.stringify({ 
+                pageId, 
+                roleName, 
+                canAccess 
+            })
         });
 
         const data = await response.json();
 
         if (data.success) {
-            originalPermissions = JSON.parse(JSON.stringify(pagePermissions));
-            hasUnsavedChanges = false;
-            showToast('Права доступу успішно збережено', 'success');
+            // Оновлюємо оригінальні дані
+            if (!originalPermissions[pageId]) {
+                originalPermissions[pageId] = [];
+            }
+            if (canAccess) {
+                if (!originalPermissions[pageId].includes(roleName)) {
+                    originalPermissions[pageId].push(roleName);
+                }
+            } else {
+                originalPermissions[pageId] = originalPermissions[pageId].filter(r => r !== roleName);
+            }
+
+            // Показуємо успішне збереження
+            cell.classList.remove('saving');
+            cell.classList.add('saved');
+            setTimeout(() => cell.classList.remove('saved'), 1500);
+
+            showToast(`Доступ ${canAccess ? 'надано' : 'відкликано'}: ${getPageName(pageId)} для ${getRoleName(roleName)}`, 'success');
         } else {
+            // Відкочуємо зміну при помилці
+            checkbox.checked = !canAccess;
+            if (canAccess) {
+                pagePermissions[pageId] = pagePermissions[pageId].filter(r => r !== roleName);
+            } else {
+                pagePermissions[pageId].push(roleName);
+            }
+            cell.classList.remove('saving');
             showToast(data.message || 'Помилка збереження', 'error');
         }
     } catch (error) {
-        console.error('Save permissions error:', error);
-        // В mock режимі просто зберігаємо локально
-        originalPermissions = JSON.parse(JSON.stringify(pagePermissions));
-        hasUnsavedChanges = false;
-        showToast('Права доступу збережено (локально)', 'success');
+        console.error('Save permission error:', error);
+        // В mock режимі вважаємо успішним
+        if (!originalPermissions[pageId]) {
+            originalPermissions[pageId] = [];
+        }
+        if (canAccess) {
+            if (!originalPermissions[pageId].includes(roleName)) {
+                originalPermissions[pageId].push(roleName);
+            }
+        } else {
+            originalPermissions[pageId] = originalPermissions[pageId].filter(r => r !== roleName);
+        }
+
+        cell.classList.remove('saving');
+        cell.classList.add('saved');
+        setTimeout(() => cell.classList.remove('saved'), 1500);
+
+        showToast(`Доступ ${canAccess ? 'надано' : 'відкликано'} (локально)`, 'success');
     }
 
-    saveBtn.disabled = false;
-    saveBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-            <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        Зберегти зміни
-    `;
+    checkbox.disabled = false;
     checkForChanges();
+}
+
+/**
+ * Отримати назву сторінки
+ */
+function getPageName(pageId) {
+    const page = systemPages.find(p => p.id === pageId);
+    return page ? page.name : pageId;
+}
+
+/**
+ * Отримати назву ролі
+ */
+function getRoleName(roleName) {
+    const role = allRoles.find(r => r.name === roleName);
+    return role ? role.display_name : roleName;
+}
+
+/**
+ * Перевірка наявності незбережених змін (тепер лише для інформації)
+ */
+function checkForChanges() {
+    const currentStr = JSON.stringify(pagePermissions);
+    const originalStr = JSON.stringify(originalPermissions);
+    hasUnsavedChanges = currentStr !== originalStr;
 }
 
 /**
  * Ініціалізація обробників подій
  */
 function initEventHandlers() {
-    // Кнопка збереження
-    document.getElementById('savePermissionsBtn').addEventListener('click', savePermissions);
-
     // Кнопка оновлення
     document.getElementById('refreshBtn').addEventListener('click', async () => {
         const btn = document.getElementById('refreshBtn');
@@ -469,24 +497,12 @@ function initEventHandlers() {
         document.getElementById('sidebarOverlay').classList.remove('active');
     });
 
-    // Попередження про незбережені зміни
-    window.addEventListener('beforeunload', (e) => {
-        if (hasUnsavedChanges) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
 }
 
 /**
  * Вихід з системи
  */
 function logout() {
-    if (hasUnsavedChanges) {
-        if (!confirm('У вас є незбережені зміни. Ви впевнені, що хочете вийти?')) {
-            return;
-        }
-    }
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
     window.location.href = '/auth.html';

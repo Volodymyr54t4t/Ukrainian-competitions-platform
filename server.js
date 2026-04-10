@@ -1972,14 +1972,143 @@ app.get(
                 });
             }
 
-            // В реальному режимі можна зберігати в БД
-            // Поки що повертаємо mock дані
+            // Режим з базою даних
+            const result = await pool.query(`
+                SELECT p.page_id, r.name as role_name
+                FROM page_permissions pp
+                JOIN pages p ON pp.page_id = p.id
+                JOIN roles r ON pp.role_id = r.id
+                WHERE pp.can_access = true
+                ORDER BY p.page_id, r.name
+            `);
+
+            // Перетворюємо в формат { pageId: [roles] }
+            const permissions = {};
+            result.rows.forEach(row => {
+                if (!permissions[row.page_id]) {
+                    permissions[row.page_id] = [];
+                }
+                permissions[row.page_id].push(row.role_name);
+            });
+
+            res.status(200).json({
+                success: true,
+                permissions,
+            });
+        } catch (error) {
+            console.error("Помилка отримання прав доступу:", error);
+            // Fallback до mock даних при помилці БД
             res.status(200).json({
                 success: true,
                 permissions: mockPagePermissions,
             });
+        }
+    },
+);
+
+/**
+ * API: Оновити окремий дозвіл (автоматичне збереження)
+ * PATCH /api/admin/page-permissions
+ */
+app.patch(
+    "/api/admin/page-permissions",
+    authenticateToken,
+    requireRole("admin"),
+    async (req, res) => {
+        try {
+            const { pageId, roleName, canAccess } = req.body;
+
+            if (!pageId || !roleName || typeof canAccess !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Невірний формат даних. Потрібно: pageId, roleName, canAccess",
+                });
+            }
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                if (!mockPagePermissions[pageId]) {
+                    mockPagePermissions[pageId] = [];
+                }
+
+                if (canAccess) {
+                    if (!mockPagePermissions[pageId].includes(roleName)) {
+                        mockPagePermissions[pageId].push(roleName);
+                    }
+                } else {
+                    mockPagePermissions[pageId] = mockPagePermissions[pageId].filter(r => r !== roleName);
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    message: `Доступ ${canAccess ? 'надано' : 'відкликано'}`,
+                    pageId,
+                    roleName,
+                    canAccess,
+                });
+            }
+
+            // Режим з базою даних
+            // Отримуємо ID сторінки та ролі
+            const pageResult = await pool.query('SELECT id FROM pages WHERE page_id = $1', [pageId]);
+            const roleResult = await pool.query('SELECT id FROM roles WHERE name = $1', [roleName]);
+
+            if (pageResult.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Сторінку не знайдено",
+                });
+            }
+
+            if (roleResult.rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Роль не знайдено",
+                });
+            }
+
+            const dbPageId = pageResult.rows[0].id;
+            const dbRoleId = roleResult.rows[0].id;
+
+            if (canAccess) {
+                // Додаємо або оновлюємо дозвіл
+                await pool.query(`
+                    INSERT INTO page_permissions (page_id, role_id, can_access, updated_at)
+                    VALUES ($1, $2, true, CURRENT_TIMESTAMP)
+                    ON CONFLICT (page_id, role_id) 
+                    DO UPDATE SET can_access = true, updated_at = CURRENT_TIMESTAMP
+                `, [dbPageId, dbRoleId]);
+            } else {
+                // Видаляємо або оновлюємо дозвіл
+                await pool.query(`
+                    INSERT INTO page_permissions (page_id, role_id, can_access, updated_at)
+                    VALUES ($1, $2, false, CURRENT_TIMESTAMP)
+                    ON CONFLICT (page_id, role_id) 
+                    DO UPDATE SET can_access = false, updated_at = CURRENT_TIMESTAMP
+                `, [dbPageId, dbRoleId]);
+            }
+
+            // Оновлюємо mock дані для консистентності
+            if (!mockPagePermissions[pageId]) {
+                mockPagePermissions[pageId] = [];
+            }
+            if (canAccess) {
+                if (!mockPagePermissions[pageId].includes(roleName)) {
+                    mockPagePermissions[pageId].push(roleName);
+                }
+            } else {
+                mockPagePermissions[pageId] = mockPagePermissions[pageId].filter(r => r !== roleName);
+            }
+
+            res.status(200).json({
+                success: true,
+                message: `Доступ ${canAccess ? 'надано' : 'відкликано'}`,
+                pageId,
+                roleName,
+                canAccess,
+            });
         } catch (error) {
-            console.error("Помилка отримання прав доступу:", error);
+            console.error("Помилка оновлення дозволу:", error);
             res.status(500).json({
                 success: false,
                 message: "Внутрішня помилка сервера",
@@ -1989,7 +2118,7 @@ app.get(
 );
 
 /**
- * API: Оновити права доступу до сторінок
+ * API: Оновити всі права доступу до сторінок
  * POST /api/admin/page-permissions
  */
 app.post(
@@ -2017,7 +2146,33 @@ app.post(
                 });
             }
 
-            // В реальному режимі можна зберігати в БД
+            // Режим з базою даних - оновлюємо всі права
+            // Спочатку скидаємо всі права
+            await pool.query('UPDATE page_permissions SET can_access = false, updated_at = CURRENT_TIMESTAMP');
+
+            // Потім встановлюємо нові права
+            for (const [pageId, roles] of Object.entries(permissions)) {
+                const pageResult = await pool.query('SELECT id FROM pages WHERE page_id = $1', [pageId]);
+                if (pageResult.rows.length === 0) continue;
+
+                const dbPageId = pageResult.rows[0].id;
+
+                for (const roleName of roles) {
+                    const roleResult = await pool.query('SELECT id FROM roles WHERE name = $1', [roleName]);
+                    if (roleResult.rows.length === 0) continue;
+
+                    const dbRoleId = roleResult.rows[0].id;
+
+                    await pool.query(`
+                        INSERT INTO page_permissions (page_id, role_id, can_access, updated_at)
+                        VALUES ($1, $2, true, CURRENT_TIMESTAMP)
+                        ON CONFLICT (page_id, role_id) 
+                        DO UPDATE SET can_access = true, updated_at = CURRENT_TIMESTAMP
+                    `, [dbPageId, dbRoleId]);
+                }
+            }
+
+            // Оновлюємо mock дані
             mockPagePermissions = { ...permissions };
             
             res.status(200).json({
@@ -2047,8 +2202,29 @@ app.get(
             const { pageId } = req.params;
             const userRole = req.user.role;
 
-            const allowedRoles = mockPagePermissions[pageId] || [];
-            const hasAccess = allowedRoles.includes(userRole);
+            // MOCK MODE
+            if (MOCK_MODE) {
+                const allowedRoles = mockPagePermissions[pageId] || [];
+                const hasAccess = allowedRoles.includes(userRole);
+
+                return res.status(200).json({
+                    success: true,
+                    hasAccess,
+                    pageId,
+                    userRole,
+                });
+            }
+
+            // Режим з базою даних
+            const result = await pool.query(`
+                SELECT pp.can_access
+                FROM page_permissions pp
+                JOIN pages p ON pp.page_id = p.id
+                JOIN roles r ON pp.role_id = r.id
+                WHERE p.page_id = $1 AND r.name = $2
+            `, [pageId, userRole]);
+
+            const hasAccess = result.rows.length > 0 && result.rows[0].can_access;
 
             res.status(200).json({
                 success: true,
@@ -2058,9 +2234,15 @@ app.get(
             });
         } catch (error) {
             console.error("Помилка перевірки доступу:", error);
-            res.status(500).json({
-                success: false,
-                message: "Внутрішня помилка сервера",
+            // Fallback до mock
+            const allowedRoles = mockPagePermissions[req.params.pageId] || [];
+            const hasAccess = allowedRoles.includes(req.user.role);
+            
+            res.status(200).json({
+                success: true,
+                hasAccess,
+                pageId: req.params.pageId,
+                userRole: req.user.role,
             });
         }
     },

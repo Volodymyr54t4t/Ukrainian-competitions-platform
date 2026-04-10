@@ -173,7 +173,7 @@
                     </div>
                     <div class="info-banner-content">
                         <h3>Управління правами доступу</h3>
-                        <p>Налаштуйте, які ролі мають доступ до кожної сторінки системи. Зміни застосовуються миттєво після збереження.</p>
+                        <p>Налаштуйте, які ролі мають доступ до кожної сторінки системи. Зміни автоматично зберігаються в базі даних при кожній зміні чекбокса.</p>
                     </div>
                 </div>
 
@@ -181,16 +181,15 @@
                 <div class="permissions-section">
                     <div class="section-header">
                         <h2 class="section-title">Матриця доступу до сторінок</h2>
-                        <button class="btn btn-primary" id="savePermissionsBtn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        <div class="auto-save-indicator" id="autoSaveIndicator">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                 stroke-linejoin="round">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
                             </svg>
-                            Зберегти зміни
-                        </button>
+                            <span>Автозбереження</span>
+                        </div>
                     </div>
 
                     <div class="table-container">
