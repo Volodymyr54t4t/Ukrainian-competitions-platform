@@ -1537,6 +1537,420 @@ app.get(
   },
 );
 
+/**
+ * API: Отримання списку всіх користувачів (тільки для admin) - розширене
+ * GET /api/admin/users
+ */
+app.get(
+  "/api/admin/users",
+  authenticateToken,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      // MOCK MODE
+      if (MOCK_MODE) {
+        const usersWithRoles = mockUsers.map((user) => {
+          const role = mockRoles.find((r) => r.id === user.role_id);
+          return {
+            ...user,
+            role_name: role?.name || user.role,
+            role_display_name: role?.display_name || user.role,
+          };
+        });
+
+        return res.status(200).json({
+          success: true,
+          users: usersWithRoles,
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.role_id, u.created_at,
+                    r.name as role_name, r.display_name as role_display_name
+             FROM users u
+             LEFT JOIN roles r ON u.role_id = r.id
+             ORDER BY u.created_at DESC`,
+      );
+
+      res.status(200).json({
+        success: true,
+        users: result.rows,
+      });
+    } catch (error) {
+      console.error("Помилка отримання користувачів:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
+/**
+ * API: Отримання всіх ролей (для адмін-панелі)
+ * GET /api/admin/roles
+ */
+app.get(
+  "/api/admin/roles",
+  authenticateToken,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      // MOCK MODE
+      if (MOCK_MODE) {
+        return res.status(200).json({
+          success: true,
+          roles: mockRoles,
+        });
+      }
+
+      const result = await pool.query(
+        "SELECT id, name, display_name, description FROM roles ORDER BY id",
+      );
+
+      res.status(200).json({
+        success: true,
+        roles: result.rows,
+      });
+    } catch (error) {
+      console.error("Помилка отримання ролей:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
+/**
+ * API: Створення нового користувача (тільки для admin)
+ * POST /api/admin/users
+ */
+app.post(
+  "/api/admin/users",
+  authenticateToken,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const { first_name, last_name, email, password, role_id } = req.body;
+
+      // Валідація
+      if (!first_name || !last_name || !email || !password || !role_id) {
+        return res.status(400).json({
+          success: false,
+          message: "Заповніть всі обов'язкові поля",
+        });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: "Пароль повинен містити мінімум 6 символів",
+        });
+      }
+
+      // MOCK MODE
+      if (MOCK_MODE) {
+        const existingMock = mockUsers.find(
+          (u) => u.email === email.toLowerCase(),
+        );
+        if (existingMock) {
+          return res.status(409).json({
+            success: false,
+            message: "Користувач з таким email вже існує",
+          });
+        }
+
+        const role = mockRoles.find((r) => r.id === parseInt(role_id));
+        const newId = mockUsers.length + 1;
+        const newUser = {
+          id: newId,
+          first_name: first_name.trim(),
+          last_name: last_name.trim(),
+          email: email.toLowerCase(),
+          role: role?.name || "student",
+          role_id: parseInt(role_id),
+          role_name: role?.name,
+          role_display_name: role?.display_name,
+          created_at: new Date().toISOString(),
+        };
+        mockUsers.push(newUser);
+
+        return res.status(201).json({
+          success: true,
+          message: "Користувача успішно створено",
+          user: newUser,
+        });
+      }
+
+      // Перевірка унікальності email
+      const existingUser = await pool.query(
+        "SELECT id FROM users WHERE email = $1",
+        [email.toLowerCase()],
+      );
+
+      if (existingUser.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "Користувач з таким email вже існує",
+        });
+      }
+
+      // Перевіряємо чи існує роль
+      const roleCheck = await pool.query(
+        "SELECT id, name, display_name FROM roles WHERE id = $1",
+        [role_id],
+      );
+      if (roleCheck.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Роль не знайдено",
+        });
+      }
+
+      // Хешування пароля
+      const saltRounds = 10;
+      const passwordHash = await bcrypt.hash(password, saltRounds);
+
+      // Створення користувача
+      const result = await pool.query(
+        `INSERT INTO users (first_name, last_name, email, password_hash, role, role_id)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING id, first_name, last_name, email, role, role_id, created_at`,
+        [
+          first_name.trim(),
+          last_name.trim(),
+          email.toLowerCase(),
+          passwordHash,
+          roleCheck.rows[0].name,
+          role_id,
+        ],
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Користувача успішно створено",
+        user: {
+          ...result.rows[0],
+          role_name: roleCheck.rows[0].name,
+          role_display_name: roleCheck.rows[0].display_name,
+        },
+      });
+    } catch (error) {
+      console.error("Помилка створення користувача:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
+/**
+ * API: Оновлення користувача (тільки для admin)
+ * PUT /api/admin/users/:userId
+ */
+app.put(
+  "/api/admin/users/:userId",
+  authenticateToken,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { first_name, last_name, email, password, role_id } = req.body;
+
+      // MOCK MODE
+      if (MOCK_MODE) {
+        const userIndex = mockUsers.findIndex((u) => u.id === parseInt(userId));
+        if (userIndex === -1) {
+          return res.status(404).json({
+            success: false,
+            message: "Користувача не знайдено",
+          });
+        }
+
+        // Перевірка унікальності email
+        const emailExists = mockUsers.find(
+          (u) => u.email === email.toLowerCase() && u.id !== parseInt(userId),
+        );
+        if (emailExists) {
+          return res.status(409).json({
+            success: false,
+            message: "Користувач з таким email вже існує",
+          });
+        }
+
+        const role = mockRoles.find((r) => r.id === parseInt(role_id));
+        mockUsers[userIndex] = {
+          ...mockUsers[userIndex],
+          first_name: first_name?.trim() || mockUsers[userIndex].first_name,
+          last_name: last_name?.trim() || mockUsers[userIndex].last_name,
+          email: email?.toLowerCase() || mockUsers[userIndex].email,
+          role: role?.name || mockUsers[userIndex].role,
+          role_id: parseInt(role_id) || mockUsers[userIndex].role_id,
+          role_name: role?.name,
+          role_display_name: role?.display_name,
+        };
+
+        return res.status(200).json({
+          success: true,
+          message: "Користувача успішно оновлено",
+          user: mockUsers[userIndex],
+        });
+      }
+
+      // Перевірка унікальності email
+      if (email) {
+        const existingUser = await pool.query(
+          "SELECT id FROM users WHERE email = $1 AND id != $2",
+          [email.toLowerCase(), userId],
+        );
+        if (existingUser.rows.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: "Користувач з таким email вже існує",
+          });
+        }
+      }
+
+      // Перевіряємо чи існує роль
+      let roleName = null;
+      let roleDisplayName = null;
+      if (role_id) {
+        const roleCheck = await pool.query(
+          "SELECT id, name, display_name FROM roles WHERE id = $1",
+          [role_id],
+        );
+        if (roleCheck.rows.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: "Роль не знайдено",
+          });
+        }
+        roleName = roleCheck.rows[0].name;
+        roleDisplayName = roleCheck.rows[0].display_name;
+      }
+
+      // Оновлення користувача
+      let query = `UPDATE users SET 
+                first_name = COALESCE($1, first_name),
+                last_name = COALESCE($2, last_name),
+                email = COALESCE($3, email)`;
+      let params = [
+        first_name?.trim(),
+        last_name?.trim(),
+        email?.toLowerCase(),
+      ];
+      let paramIndex = 4;
+
+      if (role_id) {
+        query += `, role_id = $${paramIndex}, role = $${paramIndex + 1}`;
+        params.push(role_id, roleName);
+        paramIndex += 2;
+      }
+
+      if (password && password.length >= 6) {
+        const passwordHash = await bcrypt.hash(password, 10);
+        query += `, password_hash = $${paramIndex}`;
+        params.push(passwordHash);
+        paramIndex++;
+      }
+
+      query += ` WHERE id = $${paramIndex} RETURNING id, first_name, last_name, email, role, role_id, created_at`;
+      params.push(userId);
+
+      const result = await pool.query(query, params);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Користувача не знайдено",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Користувача успішно оновлено",
+        user: {
+          ...result.rows[0],
+          role_name: roleName || result.rows[0].role,
+          role_display_name: roleDisplayName,
+        },
+      });
+    } catch (error) {
+      console.error("Помилка оновлення користувача:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
+/**
+ * API: Видалення користувача (тільки для admin)
+ * DELETE /api/admin/users/:userId
+ */
+app.delete(
+  "/api/admin/users/:userId",
+  authenticateToken,
+  requireRole(["admin"]),
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUserId = req.user.userId;
+
+      // Заборона видалення самого себе
+      if (parseInt(userId) === currentUserId) {
+        return res.status(400).json({
+          success: false,
+          message: "Ви не можете видалити свій акаунт",
+        });
+      }
+
+      // MOCK MODE
+      if (MOCK_MODE) {
+        const userIndex = mockUsers.findIndex((u) => u.id === parseInt(userId));
+        if (userIndex === -1) {
+          return res.status(404).json({
+            success: false,
+            message: "Користувача не знайдено",
+          });
+        }
+        mockUsers.splice(userIndex, 1);
+
+        return res.status(200).json({
+          success: true,
+          message: "Користувача успішно видалено",
+        });
+      }
+
+      const result = await pool.query(
+        "DELETE FROM users WHERE id = $1 RETURNING id",
+        [userId],
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Користувача не знайдено",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Користувача успішно видалено",
+      });
+    } catch (error) {
+      console.error("Помилка видалення користувача:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
 // Маршрут для головної сторінки авторизації
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "auth.html"));
@@ -1550,6 +1964,11 @@ app.get("/dashboard.html", (req, res) => {
 // Маршрут для competitions (статичний файл - перевірка токена на клієнті)
 app.get("/competitions.html", (req, res) => {
   res.sendFile(path.join(__dirname, "competitions.html"));
+});
+
+// Маршрут для users (адмін-панель - перевірка ролі на клієнті)
+app.get("/users.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "users.html"));
 });
 
 // PWA файли
