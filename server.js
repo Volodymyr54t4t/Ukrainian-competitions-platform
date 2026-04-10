@@ -1945,6 +1945,127 @@ app.delete(
     },
 );
 
+// Mock дані для прав доступу до сторінок
+let mockPagePermissions = {
+    'dashboard': ['student', 'teacher', 'methodist', 'judge', 'admin'],
+    'competitions': ['student', 'teacher', 'methodist', 'judge', 'admin'],
+    'users': ['admin'],
+    'permissions': ['admin'],
+    'logs': ['admin']
+};
+
+/**
+ * API: Отримати права доступу до сторінок
+ * GET /api/admin/page-permissions
+ */
+app.get(
+    "/api/admin/page-permissions",
+    authenticateToken,
+    requireRole("admin"),
+    async (req, res) => {
+        try {
+            // MOCK MODE
+            if (MOCK_MODE) {
+                return res.status(200).json({
+                    success: true,
+                    permissions: mockPagePermissions,
+                });
+            }
+
+            // В реальному режимі можна зберігати в БД
+            // Поки що повертаємо mock дані
+            res.status(200).json({
+                success: true,
+                permissions: mockPagePermissions,
+            });
+        } catch (error) {
+            console.error("Помилка отримання прав доступу:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера",
+            });
+        }
+    },
+);
+
+/**
+ * API: Оновити права доступу до сторінок
+ * POST /api/admin/page-permissions
+ */
+app.post(
+    "/api/admin/page-permissions",
+    authenticateToken,
+    requireRole("admin"),
+    async (req, res) => {
+        try {
+            const { permissions } = req.body;
+
+            if (!permissions || typeof permissions !== 'object') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Невірний формат даних",
+                });
+            }
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                mockPagePermissions = { ...permissions };
+                return res.status(200).json({
+                    success: true,
+                    message: "Права доступу успішно оновлено",
+                    permissions: mockPagePermissions,
+                });
+            }
+
+            // В реальному режимі можна зберігати в БД
+            mockPagePermissions = { ...permissions };
+            
+            res.status(200).json({
+                success: true,
+                message: "Права доступу успішно оновлено",
+                permissions: mockPagePermissions,
+            });
+        } catch (error) {
+            console.error("Помилка оновлення прав доступу:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера",
+            });
+        }
+    },
+);
+
+/**
+ * API: Перевірка доступу до сторінки
+ * GET /api/check-page-access/:pageId
+ */
+app.get(
+    "/api/check-page-access/:pageId",
+    authenticateToken,
+    async (req, res) => {
+        try {
+            const { pageId } = req.params;
+            const userRole = req.user.role;
+
+            const allowedRoles = mockPagePermissions[pageId] || [];
+            const hasAccess = allowedRoles.includes(userRole);
+
+            res.status(200).json({
+                success: true,
+                hasAccess,
+                pageId,
+                userRole,
+            });
+        } catch (error) {
+            console.error("Помилка перевірки доступу:", error);
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера",
+            });
+        }
+    },
+);
+
 // Маршрут для головної сторінки авторизації
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "auth.html"));
@@ -1963,6 +2084,11 @@ app.get("/competitions.html", (req, res) => {
 // Маршрут для users (адмін-панель - перевірка ролі на клієнті)
 app.get("/users.html", (req, res) => {
     res.sendFile(path.join(__dirname, "users.html"));
+});
+
+// Маршрут для permissions (адмін-панель - перевірка ролі на клієнті)
+app.get("/permissions.html", (req, res) => {
+    res.sendFile(path.join(__dirname, "permissions.html"));
 });
 
 // PWA файли

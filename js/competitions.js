@@ -522,6 +522,13 @@ function renderSidebarUser() {
             <div class="user-role">${roleDisplay}</div>
         </div>
     `;
+
+    // Show admin navigation for admins
+    const adminNavSection = document.getElementById("adminNavSection");
+    const roleName = currentUser.role?.name || currentUser.role || "student";
+    if (adminNavSection && roleName === "admin") {
+        adminNavSection.style.display = "block";
+    }
 }
 
 function showGridLoading() {

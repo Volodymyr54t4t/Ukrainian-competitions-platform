@@ -193,7 +193,12 @@ const MENU_CONFIG = {
                         icon: "users",
                         href: "/users.html",
                     },
-                    { id: "roles", label: "Ролі та дозволи", icon: "shield" },
+                    { 
+                        id: "permissions", 
+                        label: "Права доступу", 
+                        icon: "shield",
+                        href: "/permissions.html",
+                    },
                 ],
             },
             {
