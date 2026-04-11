@@ -15,7 +15,7 @@ const path = require("path");
 
 // Ініціалізація Express додатку
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
 
 // Middleware
 app.use(cors());
@@ -451,7 +451,7 @@ app.post("/api/auth/register", async (req, res) => {
             if (existingMock) {
                 return res.status(409).json({
                     success: false,
-                    message: "Користувач з таким email вже існує",
+                    message: "Користувач з так��м email вже існує",
                 });
             }
 
@@ -985,7 +985,7 @@ app.get("/api/permissions", authenticateToken, async (req, res) => {
 });
 
 /**
- * API: Отримання дозволів для конкретної ролі
+ * API: Отримання дозволів для конкретно�� ролі
  * GET /api/roles/:roleId/permissions
  */
 app.get(
@@ -1136,7 +1136,7 @@ app.put(
                 },
             });
         } catch (error) {
-            console.error("Помилка зміни ролі:", error);
+            console.error("Помил��а зміни ролі:", error);
             res.status(500).json({
                 success: false,
                 message: "Внутрішня помилка сервера",
@@ -1514,7 +1514,7 @@ app.delete(
             console.error("Помилка видалення конкурсу:", error);
             res.status(500).json({
                 success: false,
-                message: "Внутрішня помилка сервера",
+                message: "Внутрішня поми��ка сервера",
             });
         }
     },
