@@ -439,7 +439,7 @@ app.post("/api/auth/register", async (req, res) => {
         if (password !== confirm_password) {
             return res.status(400).json({
                 success: false,
-                message: "Паролі не співпадають",
+                message: "Пар��лі не співпадають",
             });
         }
 
@@ -451,7 +451,7 @@ app.post("/api/auth/register", async (req, res) => {
             if (existingMock) {
                 return res.status(409).json({
                     success: false,
-                    message: "Користувач з так��м email вже існує",
+                    message: "Користув��ч з так��м email вже існує",
                 });
             }
 
@@ -2440,27 +2440,11 @@ app.get("/service-worker.js", (req, res) => {
     res.sendFile(path.join(__dirname, "service-worker.js"));
 });
 
-// Функція для пошуку вільного порту
-const startServer = (port) => {
-    const server = app.listen(port, () => {
-        console.log(`Сервер запущено на порту ${port}`);
-        console.log(`Відкрийте http://localhost:${port} для доступу до платформи`);
-    });
-
-    server.on("error", (err) => {
-        if (err.code === "EADDRINUSE") {
-            console.log(`Порт ${port} зайнятий, спроба порту ${port + 1}...`);
-            startServer(port + 1);
-        } else {
-            console.error("Помилка сервера:", err);
-        }
-    });
-};
-
-// Запуск сервера тільки якщо файл запущено напряму
-if (require.main === module) {
-    startServer(PORT);
-}
+// Запуск сервера на фіксованому порту
+const server = app.listen(PORT, () => {
+    console.log(`Сервер запущено на порту ${PORT}`);
+    console.log(`Відкрийте http://localhost:${PORT} для доступу до платформи`);
+});
 
 // Експорт для тестування та middleware
 module.exports = { app, authenticateToken, requirePermission, requireRole };
