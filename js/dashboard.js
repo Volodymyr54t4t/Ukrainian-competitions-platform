@@ -715,13 +715,17 @@ function renderMenuByRole(role) {
     // Додаємо обробники кліків на пункти меню
     sidebarNav.querySelectorAll(".nav-item").forEach((item) => {
         item.addEventListener("click", (e) => {
-            const href = item.getAttribute("href");
-            // Якщо є реальний href - переходимо по ньому
-            if (href && href !== "#") {
-                return; // Дозволяємо стандартну навігацію
-            }
             e.preventDefault();
+            const href = item.getAttribute("href");
             const pageId = item.dataset.page;
+            console.log("[v0] Menu click - href:", href, "pageId:", pageId);
+            
+            // Якщо є реальний href - переходимо по ньому явно
+            if (href && href !== "#") {
+                console.log("[v0] Navigating to:", href);
+                window.location.href = href;
+                return;
+            }
             setActiveNavItem(item);
             handleNavigation(pageId);
         });
