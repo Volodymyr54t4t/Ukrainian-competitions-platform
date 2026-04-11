@@ -773,7 +773,7 @@ const requireRole = (allowedRoles) => {
 };
 
 /**
- * API: Отримання інформації про поточного користувача з повними RBAC даними
+ * API: Отримання інформації про поточного користувача з повними RBAC да��ими
  * GET /api/auth/me
  */
 app.get("/api/auth/me", authenticateToken, async (req, res) => {
@@ -1963,6 +1963,204 @@ app.get("/competitions.html", (req, res) => {
 // Маршрут для users (адмін-панель - перевірка ролі на клієнті)
 app.get("/users.html", (req, res) => {
     res.sendFile(path.join(__dirname, "users.html"));
+});
+
+// Маршрут для profile-student (профіль студента)
+app.get("/profile-student.html", (req, res) => {
+    res.sendFile(path.join(__dirname, "profile-student.html"));
+});
+
+// ==================== MOCK DATA ДЛЯ ПРОФІЛІВ СТУДЕНТІВ ====================
+const mockStudentProfiles = {};
+
+/**
+ * API: Отримання профілю студента
+ * GET /api/profile/student
+ */
+app.get("/api/profile/student", authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            const profile = mockStudentProfiles[userId];
+            
+            if (!profile) {
+                // Повертаємо базову інформацію з users
+                const user = mockUsers.find(u => u.id === userId);
+                return res.status(200).json({
+                    success: true,
+                    profile: {
+                        user_id: userId,
+                        first_name: user?.first_name || "",
+                        last_name: user?.last_name || "",
+                        profile_photo: null,
+                        class: null,
+                        institution: null,
+                        city: null,
+                        interests: [],
+                        achievements: [],
+                        certificates: [],
+                    },
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                profile,
+            });
+        }
+
+        // Реальний режим з БД
+        const result = await pool.query(
+            `SELECT ps.*, u.first_name as user_first_name, u.last_name as user_last_name
+             FROM profile_student ps
+             RIGHT JOIN users u ON ps.user_id = u.id
+             WHERE u.id = $1`,
+            [userId],
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Профіль не знайдено",
+            });
+        }
+
+        const row = result.rows[0];
+        const profile = {
+            user_id: userId,
+            first_name: row.first_name || row.user_first_name,
+            last_name: row.last_name || row.user_last_name,
+            profile_photo: row.profile_photo,
+            class: row.class,
+            institution: row.institution,
+            city: row.city,
+            interests: row.interests || [],
+            achievements: row.achievements || [],
+            certificates: row.certificates || [],
+        };
+
+        res.status(200).json({
+            success: true,
+            profile,
+        });
+    } catch (error) {
+        console.error("Помилка отримання профілю студента:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера",
+        });
+    }
+});
+
+/**
+ * API: Збереження/оновлення профілю студента
+ * POST /api/profile/student
+ */
+app.post("/api/profile/student", authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const {
+            first_name,
+            last_name,
+            profile_photo,
+            class: studentClass,
+            institution,
+            city,
+            interests,
+            achievements,
+            certificates,
+        } = req.body;
+
+        // Валідація обов'язкових полів
+        if (!first_name || !last_name) {
+            return res.status(400).json({
+                success: false,
+                message: "Ім'я та прізвище є обов'язковими",
+            });
+        }
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            mockStudentProfiles[userId] = {
+                user_id: userId,
+                first_name: first_name.trim(),
+                last_name: last_name.trim(),
+                profile_photo: profile_photo || null,
+                class: studentClass || null,
+                institution: institution || null,
+                city: city || null,
+                interests: interests || [],
+                achievements: achievements || [],
+                certificates: certificates || [],
+                updated_at: new Date().toISOString(),
+            };
+
+            // Оновлюємо також дані в mockUsers
+            const userIndex = mockUsers.findIndex(u => u.id === userId);
+            if (userIndex !== -1) {
+                mockUsers[userIndex].first_name = first_name.trim();
+                mockUsers[userIndex].last_name = last_name.trim();
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: "Профіль успішно збережено",
+                profile: mockStudentProfiles[userId],
+            });
+        }
+
+        // Реальний режим з БД - UPSERT
+        const result = await pool.query(
+            `INSERT INTO profile_student (
+                user_id, first_name, last_name, profile_photo, 
+                class, institution, city, interests, achievements, certificates
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (user_id) DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                profile_photo = EXCLUDED.profile_photo,
+                class = EXCLUDED.class,
+                institution = EXCLUDED.institution,
+                city = EXCLUDED.city,
+                interests = EXCLUDED.interests,
+                achievements = EXCLUDED.achievements,
+                certificates = EXCLUDED.certificates,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *`,
+            [
+                userId,
+                first_name.trim(),
+                last_name.trim(),
+                profile_photo || null,
+                studentClass || null,
+                institution || null,
+                city || null,
+                interests || [],
+                JSON.stringify(achievements || []),
+                JSON.stringify(certificates || []),
+            ],
+        );
+
+        // Оновлюємо також дані в таблиці users
+        await pool.query(
+            "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3",
+            [first_name.trim(), last_name.trim(), userId],
+        );
+
+        res.status(200).json({
+            success: true,
+            message: "Профіль успішно збережено",
+            profile: result.rows[0],
+        });
+    } catch (error) {
+        console.error("Помилка збереження профілю студента:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера",
+        });
+    }
 });
 
 // PWA файли
