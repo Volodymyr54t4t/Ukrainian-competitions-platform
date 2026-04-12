@@ -12,15 +12,51 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
 // Ініціалізація Express додатку
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Створення папки для завантажень якщо не існує
+const uploadDir = path.join(__dirname, "uploads", "profile_photo");
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Налаштування multer для завантаження фото профілю
+const profilePhotoStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const ext = path.extname(file.originalname);
+        cb(null, `profile-${req.user.userId}-${uniqueSuffix}${ext}`);
+    },
+});
+
+const profilePhotoUpload = multer({
+    storage: profilePhotoStorage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+        if (allowedTypes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error("Дозволені лише зображення (JPEG, PNG, GIF, WebP)"), false);
+        }
+    },
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Mock режим - працює без бази даних для демонстрації
 const MOCK_MODE = !process.env.DATABASE_URL;
@@ -1997,6 +2033,7 @@ app.get("/api/profile/student", authenticateToken, async (req, res) => {
                         profile_photo: null,
                         class: null,
                         institution: null,
+                        institution_id: null,
                         city: null,
                         interests: [],
                         achievements: [],
@@ -2067,6 +2104,7 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
             profile_photo,
             class: studentClass,
             institution,
+            institution_id,
             city,
             interests,
             achievements,
@@ -2083,13 +2121,18 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
 
         // MOCK MODE
         if (MOCK_MODE) {
+            // Зберігаємо фото якщо воно вже є в профілі
+            const existingPhoto = mockStudentProfiles[userId]?.profile_photo;
+            
             mockStudentProfiles[userId] = {
+                ...mockStudentProfiles[userId],
                 user_id: userId,
                 first_name: first_name.trim(),
                 last_name: last_name.trim(),
-                profile_photo: profile_photo || null,
+                profile_photo: existingPhoto || null,
                 class: studentClass || null,
                 institution: institution || null,
+                institution_id: institution_id || null,
                 city: city || null,
                 interests: interests || [],
                 achievements: achievements || [],
@@ -2156,6 +2199,195 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
         });
     } catch (error) {
         console.error("Помилка збереження профілю студента:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера",
+        });
+    }
+});
+
+/**
+ * API: Завантаження фото профілю студента
+ * POST /api/profile/student/photo
+ */
+app.post("/api/profile/student/photo", authenticateToken, (req, res) => {
+    profilePhotoUpload.single("photo")(req, res, async (err) => {
+        if (err instanceof multer.MulterError) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+                return res.status(400).json({
+                    success: false,
+                    message: "Розмір файлу не повинен перевищувати 5MB",
+                });
+            }
+            return res.status(400).json({
+                success: false,
+                message: "Помилка завантаження файлу",
+            });
+        } else if (err) {
+            return res.status(400).json({
+                success: false,
+                message: err.message,
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Файл не завантажено",
+            });
+        }
+
+        try {
+            const userId = req.user.userId;
+            const photoPath = `/uploads/profile_photo/${req.file.filename}`;
+
+            // MOCK MODE
+            if (MOCK_MODE) {
+                if (mockStudentProfiles[userId]) {
+                    // Видалення старого фото
+                    const oldPhoto = mockStudentProfiles[userId].profile_photo;
+                    if (oldPhoto && oldPhoto.startsWith("/uploads/")) {
+                        const oldPhotoPath = path.join(__dirname, oldPhoto);
+                        if (fs.existsSync(oldPhotoPath)) {
+                            fs.unlinkSync(oldPhotoPath);
+                        }
+                    }
+                    mockStudentProfiles[userId].profile_photo = photoPath;
+                } else {
+                    mockStudentProfiles[userId] = {
+                        user_id: userId,
+                        profile_photo: photoPath,
+                    };
+                }
+
+                return res.status(200).json({
+                    success: true,
+                    message: "Фото успішно завантажено",
+                    photo_url: photoPath,
+                });
+            }
+
+            // Реальний режим з БД
+            // Отримання старого фото для видалення
+            const oldPhotoResult = await pool.query(
+                "SELECT profile_photo FROM profile_student WHERE user_id = $1",
+                [userId],
+            );
+
+            if (oldPhotoResult.rows.length > 0 && oldPhotoResult.rows[0].profile_photo) {
+                const oldPhoto = oldPhotoResult.rows[0].profile_photo;
+                if (oldPhoto.startsWith("/uploads/")) {
+                    const oldPhotoPath = path.join(__dirname, oldPhoto);
+                    if (fs.existsSync(oldPhotoPath)) {
+                        fs.unlinkSync(oldPhotoPath);
+                    }
+                }
+            }
+
+            // Оновлення шляху до фото в БД
+            await pool.query(
+                `INSERT INTO profile_student (user_id, profile_photo)
+                 VALUES ($1, $2)
+                 ON CONFLICT (user_id) DO UPDATE SET
+                 profile_photo = EXCLUDED.profile_photo,
+                 updated_at = CURRENT_TIMESTAMP`,
+                [userId, photoPath],
+            );
+
+            res.status(200).json({
+                success: true,
+                message: "Фото успішно завантажено",
+                photo_url: photoPath,
+            });
+        } catch (error) {
+            console.error("Помилка завантаження фото:", error);
+            // Видалення завантаженого файлу у разі помилки
+            if (req.file) {
+                const filePath = path.join(uploadDir, req.file.filename);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+            }
+            res.status(500).json({
+                success: false,
+                message: "Внутрішня помилка сервера",
+            });
+        }
+    });
+});
+
+// ==================== MOCK DATA ДЛЯ НАВЧАЛЬНИХ ЗАКЛАДІВ ====================
+const mockInstitutions = [
+    { id: 16907, name: "Вересівський ліцей Житомирської міської ради" },
+    { id: 24634, name: "Відокремлений підрозділ \"Заклад загальної середньої освіти І-ІІІ ступенів \"Житомирський ліцей Київського інституту бізнесу та технологій\"" },
+    { id: 24081, name: "Відокремлений підрозділ \"Науковий ліцей Житомирського державного університету імені Івана Франка\"" },
+    { id: 24618, name: "Відокремлений структурний підрозділ \"Науковий ліцей Поліського національного університету\"" },
+    { id: 15697, name: "ЖИТОМИРСЬКИЙ ПРИВАТНИЙ ХРИСТИЯНСЬКИЙ ЛІЦЕЙ \"СЯЙВО\" М.ЖИТОМИРА" },
+    { id: 15671, name: "Ліцей № 10 міста Житомира" },
+    { id: 15679, name: "Ліцей № 21 міста Житомира" },
+    { id: 15668, name: "Ліцей № 6 міста Житомира ім. В.Г. Короленка" },
+    { id: 15693, name: "Ліцей № 1 міста Житомира" },
+    { id: 15672, name: "Ліцей № 12 міста Житомира ім. С. Ковальчука" },
+    { id: 15673, name: "Ліцей № 14 міста Житомира" },
+    { id: 15674, name: "Ліцей № 15 міста Житомира" },
+    { id: 15675, name: "Ліцей № 16 міста Житомира" },
+    { id: 15676, name: "Ліцей № 17 міста Житомира" },
+    { id: 15677, name: "Ліцей №19 міста Житомира" },
+    { id: 15665, name: "Ліцей № 2 міста Житомира" },
+    { id: 15678, name: "Ліцей № 20 міста Житомира" },
+    { id: 15680, name: "Ліцей № 22 міста Житомира імені Василя Михайловича Кавуна" },
+    { id: 15681, name: "Ліцей № 23 міста Житомира ім. М. Очерета" },
+    { id: 15682, name: "Ліцей № 24 міста Житомира" },
+    { id: 15683, name: "Ліцей № 25 міста Житомира" },
+    { id: 15684, name: "Ліцей № 26 міста Житомира" },
+    { id: 15685, name: "Ліцей № 27 міста Житомира" },
+    { id: 15686, name: "Ліцей № 28 міста Житомира імені гетьмана Івана Виговського" },
+    { id: 15666, name: "Ліцей № 3 міста Житомира" },
+    { id: 15687, name: "Ліцей № 30 міста Житомира" },
+    { id: 15694, name: "Ліцей № 31 міста Житомира" },
+    { id: 15688, name: "Ліцей № 32 міста Житомира" },
+    { id: 15689, name: "Ліцей № 33 міста Житомира" },
+    { id: 15690, name: "Ліцей № 34 міста Житомира" },
+    { id: 15691, name: "Ліцей № 35 міста Житомира" },
+    { id: 15692, name: "Ліцей № 36 міста Житомира ім. Я. Домбровського" },
+    { id: 15664, name: "Ліцей № 4 міста Житомира" },
+    { id: 15667, name: "Ліцей № 5 міста Житомира" },
+    { id: 15669, name: "Ліцей № 7 міста Житомира імені Валерія Вікторовича Бражевського" },
+    { id: 15670, name: "Ліцей № 8 міста Житомира" },
+    { id: 24066, name: "Відокремлений підрозділ «Науковий ліцей» Державного університету «Житомирська політехніка»" },
+    { id: 15698, name: "Приватний ліцей \"Ор Авнер\" міста Житомира" },
+    { id: 20075, name: "Початкова школа № 11 міста Житомира" },
+    { id: 15699, name: "Салезіянський приватний ліцей \"Всесвіт\" м.Житомира" },
+    { id: 24592, name: "Товариство з обмеженою відповідальністю загальноосвітній навчальний заклад \"Синергія\"" },
+    { id: 24031, name: "Товариство з обмеженою відповідальністю «ЗАКЛАД ОСВІТИ «УСПІХ»" },
+    { id: 24106, name: "ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «ПРИВАТНИЙ ЛІЦЕЙ «АЙ ТІ СТЕП СКУЛ ЖИТОМИР»" },
+];
+
+/**
+ * API: Отримання списку навчальних закладів
+ * GET /api/institutions
+ */
+app.get("/api/institutions", async (req, res) => {
+    try {
+        // MOCK MODE
+        if (MOCK_MODE) {
+            return res.status(200).json({
+                success: true,
+                institutions: mockInstitutions,
+            });
+        }
+
+        // Реальний режим з БД
+        const result = await pool.query(
+            "SELECT id, name FROM zhytomyr_educational_institutions ORDER BY name",
+        );
+
+        res.status(200).json({
+            success: true,
+            institutions: result.rows,
+        });
+    } catch (error) {
+        console.error("Помилка отримання списку закладів:", error);
         res.status(500).json({
             success: false,
             message: "Внутрішня помилка сервера",
