@@ -9,6 +9,7 @@ let currentUser = null;
 let profileData = null;
 let editAchievements = [];
 let editCertificates = [];
+let institutionsList = [];
 
 // ==================== КОНФІГУРАЦІЯ МЕНЮ ====================
 const MENU_CONFIG = {
@@ -165,11 +166,46 @@ function showErrorMessage(message) {
 /**
  * Ініціалізація сторінки
  */
-function initializePage() {
+async function initializePage() {
     renderSidebar();
     renderUserInfo();
     setupEventListeners();
+    await loadInstitutions();
     loadProfile();
+}
+
+/**
+ * Завантаження списку навчальних закладів
+ */
+async function loadInstitutions() {
+    try {
+        const response = await fetch("/api/institutions");
+        const data = await response.json();
+        
+        if (data.success) {
+            institutionsList = data.institutions;
+            renderInstitutionsSelect();
+        }
+    } catch (error) {
+        console.error("Помилка завантаження закладів:", error);
+    }
+}
+
+/**
+ * Рендер списку навчальних закладів у select
+ */
+function renderInstitutionsSelect() {
+    const select = document.getElementById("editInstitution");
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Оберіть навчальний заклад</option>';
+    
+    institutionsList.forEach(inst => {
+        const option = document.createElement("option");
+        option.value = inst.name;
+        option.textContent = inst.name;
+        select.appendChild(option);
+    });
 }
 
 /**
@@ -346,14 +382,13 @@ function renderProfile() {
     // Header
     document.getElementById("profileName").textContent = 
         `${profileData.first_name} ${profileData.last_name}`;
-    
-    document.getElementById("profileInitials").textContent = 
-        getInitials(profileData.first_name, profileData.last_name);
 
     // Фото
+    const photoEl = document.getElementById("profilePhoto");
     if (profileData.profile_photo) {
-        document.getElementById("profilePhoto").innerHTML = 
-            `<img src="${profileData.profile_photo}" alt="Фото профілю">`;
+        photoEl.innerHTML = `<img src="${profileData.profile_photo}" alt="Фото профілю">`;
+    } else {
+        photoEl.innerHTML = `<span id="profileInitials">${getInitials(profileData.first_name, profileData.last_name)}</span>`;
     }
 
     // Локація
@@ -707,11 +742,12 @@ async function saveProfile(e) {
         last_name: document.getElementById("editLastName").value.trim(),
         class: document.getElementById("editClass").value.trim() || null,
         city: document.getElementById("editCity").value.trim() || null,
-        institution: document.getElementById("editInstitution").value.trim() || null,
+        institution: document.getElementById("editInstitution").value || null,
         interests: Array.from(document.querySelectorAll('input[name="interests"]:checked'))
             .map(cb => cb.value),
         achievements: editAchievements.filter(a => a.title.trim() !== ""),
         certificates: editCertificates.filter(c => c.title.trim() !== ""),
+        profile_photo: profileData.profile_photo || null,
     };
 
     try {
@@ -745,7 +781,7 @@ async function saveProfile(e) {
         }
     } catch (error) {
         console.error("Помилка збереження профілю:", error);
-        showToast("Помилка з'єднання з сервером", "error");
+        showToast("Помилка з'єднання з с��рвером", "error");
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = `
@@ -779,15 +815,58 @@ async function handlePhotoUpload(e) {
         return;
     }
 
-    // Для демо - показуємо локальне зображення
+    // Показуємо превью поки завантажуємо
     const reader = new FileReader();
     reader.onload = (event) => {
-        profileData.profile_photo = event.target.result;
         document.getElementById("profilePhoto").innerHTML = 
             `<img src="${event.target.result}" alt="Фото профілю">`;
-        showToast("Фото профілю оновлено", "success");
     };
     reader.readAsDataURL(file);
+
+    // Завантажуємо на сервер
+    const formData = new FormData();
+    formData.append("photo", file);
+
+    try {
+        const token = localStorage.getItem("authToken");
+        const response = await fetch("/api/profile/photo", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Оновлюємо profileData з URL з сервера
+            profileData.profile_photo = data.photo_url;
+            document.getElementById("profilePhoto").innerHTML = 
+                `<img src="${data.photo_url}" alt="Фото профілю">`;
+            showToast("Фото профілю оновлено", "success");
+        } else {
+            showToast(data.message || "Помилка завантаження фото", "error");
+            // Повертаємо старе фото або ініціали
+            renderProfilePhoto();
+        }
+    } catch (error) {
+        console.error("Помилка завантаження фото:", error);
+        showToast("Помилка з'єднання з сервером", "error");
+        renderProfilePhoto();
+    }
+}
+
+/**
+ * Рендер фото профілю
+ */
+function renderProfilePhoto() {
+    const photoEl = document.getElementById("profilePhoto");
+    if (profileData.profile_photo) {
+        photoEl.innerHTML = `<img src="${profileData.profile_photo}" alt="Фото профілю">`;
+    } else {
+        photoEl.innerHTML = `<span id="profileInitials">${getInitials(profileData.first_name, profileData.last_name)}</span>`;
+    }
 }
 
 /**
