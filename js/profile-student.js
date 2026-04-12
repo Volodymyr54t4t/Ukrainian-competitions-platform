@@ -73,34 +73,92 @@ const ICONS = {
 
 // ==================== ІНІЦІАЛІЗАЦІЯ ====================
 document.addEventListener("DOMContentLoaded", () => {
-    checkAuth();
+    initializeProfilePage();
 });
 
 /**
- * Перевірка авторизації
+ * Ініціалізація сторінки профілю з перевіркою авторизації через API
  */
-function checkAuth() {
-    const token = localStorage.getItem("token");
-    const user = localStorage.getItem("user");
-
-    if (!token || !user) {
-        window.location.href = "/auth.html";
-        return;
-    }
-
+async function initializeProfilePage() {
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    
     try {
-        currentUser = JSON.parse(user);
+        // Перевірка наявності токена
+        const token = localStorage.getItem("authToken");
+        if (!token) {
+            redirectToAuth();
+            return;
+        }
+
+        // Отримання даних користувача з бази даних через API
+        const response = await fetch("/api/auth/me", {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            redirectToAuth();
+            return;
+        }
+
+        // Збереження даних користувача
+        currentUser = data.user;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+
+        // Визначення ролі з бази даних
+        const roleName = currentUser.role?.name || currentUser.role || "student";
         
         // Перевірка ролі - тільки для студентів
-        if (currentUser.role !== "student") {
+        if (roleName !== "student") {
             window.location.href = "/dashboard.html";
             return;
         }
 
+        // Ініціалізація сторінки
         initializePage();
-    } catch (e) {
-        console.error("Помилка парсингу користувача:", e);
-        window.location.href = "/auth.html";
+
+        // Приховати loading overlay
+        if (loadingOverlay) {
+            loadingOverlay.classList.add("hidden");
+        }
+    } catch (error) {
+        console.error("Помилка ініціалізації профілю:", error);
+        showErrorMessage("Не вдалося завантажити дані. Спробуйте оновити сторінку.");
+    }
+}
+
+/**
+ * Перенаправлення на сторінку авторизації
+ */
+function redirectToAuth() {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("user");
+    window.location.href = "/auth.html";
+}
+
+/**
+ * Показ повідомлення про помилку
+ */
+function showErrorMessage(message) {
+    const loadingOverlay = document.getElementById("loadingOverlay");
+    if (loadingOverlay) {
+        loadingOverlay.innerHTML = `
+            <div class="error-container">
+                <div class="error-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                </div>
+                <h2>Помилка завантаження</h2>
+                <p>${message}</p>
+                <button class="btn-primary" onclick="window.location.reload()">Оновити сторінку</button>
+            </div>
+        `;
     }
 }
 
@@ -233,10 +291,8 @@ function setupEventListeners() {
  * Завантаження профілю
  */
 async function loadProfile() {
-    const loadingOverlay = document.getElementById("loadingOverlay");
-
     try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("authToken");
         const response = await fetch("/api/profile/student", {
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -659,7 +715,7 @@ async function saveProfile(e) {
     };
 
     try {
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("authToken");
         const response = await fetch("/api/profile/student", {
             method: "POST",
             headers: {
