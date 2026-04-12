@@ -12,6 +12,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
 // Ініціалізація Express додатку
 const app = express();
@@ -21,6 +23,42 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// Налаштування для завантаження файлів
+const uploadsDir = path.join(__dirname, "uploads", "profile_photo");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer конфігурація для завантаження фото профілю
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    const userId = req.user?.userId || "unknown";
+    const ext = path.extname(file.originalname);
+    const filename = `profile_${userId}_${Date.now()}${ext}`;
+    cb(null, filename);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+  fileFilter: function (req, file, cb) {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Тільки зображення дозволені"), false);
+    }
+  },
+});
+
+// Статична папка для uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Mock режим - працює без бази даних для демонстрації
 const MOCK_MODE = !process.env.DATABASE_URL;
@@ -265,6 +303,86 @@ let mockCompetitions = [
     max_participants: 100,
     applications_count: 0,
     created_at: "2026-02-01",
+  },
+];
+
+// Mock дані для навчальних закладів Житомира
+const mockInstitutions = [
+  { id: 16907, name: "Вересівський ліцей Житомирської міської ради" },
+  {
+    id: 24634,
+    name: 'Відокремлений підрозділ "Заклад загальної середньої освіти І-ІІІ ступенів "Житомирський ліцей Київського інституту бізнесу та технологій"',
+  },
+  {
+    id: 24081,
+    name: 'Відокремлений підрозділ "Науковий ліцей Житомирського державного університету імені Івана Франка"',
+  },
+  {
+    id: 24618,
+    name: 'Відокремлений структурний підрозділ "Науковий ліцей Поліського національного університету"',
+  },
+  {
+    id: 15697,
+    name: 'ЖИТОМИРСЬКИЙ ПРИВАТНИЙ ХРИСТИЯНСЬКИЙ ЛІЦЕЙ "СЯЙВО" М.ЖИТОМИРА',
+  },
+  { id: 15671, name: "Ліцей № 10 міста Житомира" },
+  { id: 15679, name: "Ліцей № 21 міста Житомира" },
+  { id: 15668, name: "Ліцей № 6 міста Житомира ім. В.Г. Короленка" },
+  { id: 15693, name: "Ліцей № 1 міста Житомира" },
+  { id: 15672, name: "Ліцей № 12 міста Житомира ім. С. Ковальчука" },
+  { id: 15673, name: "Ліцей № 14 міста Житомира" },
+  { id: 15674, name: "Ліцей № 15 міста Житомира" },
+  { id: 15675, name: "Ліцей № 16 міста Житомира" },
+  { id: 15676, name: "Ліцей № 17 міста Житомира" },
+  { id: 15677, name: "Ліцей №19 міста Житомира" },
+  { id: 15665, name: "Ліцей № 2 міста Житомира" },
+  { id: 15678, name: "Ліцей № 20 міста Житомира" },
+  {
+    id: 15680,
+    name: "Ліцей № 22 міста Житомира імені Василя Михайловича Кавуна",
+  },
+  { id: 15681, name: "Ліцей № 23 міста Житомира ім. М. Очерета" },
+  { id: 15682, name: "Ліцей № 24 міста Житомира" },
+  { id: 15683, name: "Ліцей № 25 міста Житомира" },
+  { id: 15684, name: "Ліцей № 26 міста Житомира" },
+  { id: 15685, name: "Ліцей № 27 міста Житомира" },
+  {
+    id: 15686,
+    name: "Ліцей № 28 міста Житомира імені гетьмана Івана Виговського",
+  },
+  { id: 15666, name: "Ліцей № 3 міста Житомира" },
+  { id: 15687, name: "Ліцей № 30 міста Житомира" },
+  { id: 15694, name: "Ліцей № 31 міста Житомира" },
+  { id: 15688, name: "Ліцей № 32 міста Житомира" },
+  { id: 15689, name: "Ліцей № 33 міста Житомира" },
+  { id: 15690, name: "Ліцей № 34 міста Житомира" },
+  { id: 15691, name: "Ліцей № 35 міста Житомира" },
+  { id: 15692, name: "Ліцей № 36 міста Житомира ім. Я. Домбровського" },
+  { id: 15664, name: "Ліцей № 4 міста Житомира" },
+  { id: 15667, name: "Ліцей № 5 міста Житомира" },
+  {
+    id: 15669,
+    name: "Ліцей № 7 міста Житомира імені Валерія Вікторовича Бражевського",
+  },
+  { id: 15670, name: "Ліцей № 8 міста Житомира" },
+  {
+    id: 24066,
+    name: "Відокремлений підрозділ «Науковий ліцей» Державного університету «Житомирська політехніка»",
+  },
+  { id: 15698, name: 'Приватний ліцей "Ор Авнер" міста Житомира' },
+  { id: 20075, name: "Початкова школа № 11 міста Житомира" },
+  { id: 15699, name: 'Салезіянський приватний ліцей "Всесвіт" м.Житомира' },
+  {
+    id: 24592,
+    name: 'Товариство з обмеженою відповідальністю загальноосвітній навчальний заклад "Синергія"',
+  },
+  {
+    id: 24031,
+    name: "Товариство з обмеженою відповідальністю «ЗАКЛАД ОСВІТИ «УСПІХ»",
+  },
+  {
+    id: 24106,
+    name: "ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «ПРИВАТНИЙ ЛІЦЕЙ «АЙ ТІ СТЕП СКУЛ ЖИТОМИР»",
   },
 ];
 
@@ -773,7 +891,7 @@ const requireRole = (allowedRoles) => {
 };
 
 /**
- * API: Отримання інформації про поточного користувача з повними RBAC даними
+ * API: Отримання інформації про поточного користувача з повними RBAC да��ими
  * GET /api/auth/me
  */
 app.get("/api/auth/me", authenticateToken, async (req, res) => {
@@ -1969,6 +2087,329 @@ app.get("/competitions.html", (req, res) => {
 // Маршрут для users (адмін-панель - перевірка ролі на клієнті)
 app.get("/users.html", (req, res) => {
   res.sendFile(path.join(__dirname, "users.html"));
+});
+
+// Маршрут для profile-student (профіль студента)
+app.get("/profile-student.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "profile-student.html"));
+});
+
+// ==================== MOCK DATA ДЛЯ ПРОФІЛІВ СТУДЕНТІВ ====================
+const mockStudentProfiles = {};
+
+/**
+ * API: Отримання профілю студента
+ * GET /api/profile/student
+ */
+app.get("/api/profile/student", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // MOCK MODE
+    if (MOCK_MODE) {
+      const profile = mockStudentProfiles[userId];
+
+      if (!profile) {
+        // Повертаємо базову інформацію з users
+        const user = mockUsers.find((u) => u.id === userId);
+        return res.status(200).json({
+          success: true,
+          profile: {
+            user_id: userId,
+            first_name: user?.first_name || "",
+            last_name: user?.last_name || "",
+            profile_photo: null,
+            class: null,
+            institution: null,
+            city: null,
+            interests: [],
+            achievements: [],
+            certificates: [],
+          },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        profile,
+      });
+    }
+
+    // Реальний режим з БД
+    const result = await pool.query(
+      `SELECT ps.*, u.first_name as user_first_name, u.last_name as user_last_name
+             FROM profile_student ps
+             RIGHT JOIN users u ON ps.user_id = u.id
+             WHERE u.id = $1`,
+      [userId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Профіль не знайдено",
+      });
+    }
+
+    const row = result.rows[0];
+    const profile = {
+      user_id: userId,
+      first_name: row.first_name || row.user_first_name,
+      last_name: row.last_name || row.user_last_name,
+      profile_photo: row.profile_photo,
+      class: row.class,
+      institution: row.institution,
+      city: row.city,
+      interests: row.interests || [],
+      achievements: row.achievements || [],
+      certificates: row.certificates || [],
+    };
+
+    res.status(200).json({
+      success: true,
+      profile,
+    });
+  } catch (error) {
+    console.error("Помилка отримання профілю студента:", error);
+    res.status(500).json({
+      success: false,
+      message: "Внутрішня помилка сервера",
+    });
+  }
+});
+
+/**
+ * API: Збереження/оновлення профілю студента
+ * POST /api/profile/student
+ */
+app.post("/api/profile/student", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      first_name,
+      last_name,
+      profile_photo,
+      class: studentClass,
+      institution,
+      city,
+      interests,
+      achievements,
+      certificates,
+    } = req.body;
+
+    // Валідація обов'язкових полів
+    if (!first_name || !last_name) {
+      return res.status(400).json({
+        success: false,
+        message: "Ім'я та прізвище є обов'язковими",
+      });
+    }
+
+    // MOCK MODE
+    if (MOCK_MODE) {
+      mockStudentProfiles[userId] = {
+        user_id: userId,
+        first_name: first_name.trim(),
+        last_name: last_name.trim(),
+        profile_photo: profile_photo || null,
+        class: studentClass || null,
+        institution: institution || null,
+        city: city || null,
+        interests: interests || [],
+        achievements: achievements || [],
+        certificates: certificates || [],
+        updated_at: new Date().toISOString(),
+      };
+
+      // Оновлюємо також дані в mockUsers
+      const userIndex = mockUsers.findIndex((u) => u.id === userId);
+      if (userIndex !== -1) {
+        mockUsers[userIndex].first_name = first_name.trim();
+        mockUsers[userIndex].last_name = last_name.trim();
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Профіль успішно збережено",
+        profile: mockStudentProfiles[userId],
+      });
+    }
+
+    // Реальний режим з БД - UPSERT
+    const result = await pool.query(
+      `INSERT INTO profile_student (
+                user_id, first_name, last_name, profile_photo, 
+                class, institution, city, interests, achievements, certificates
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            ON CONFLICT (user_id) DO UPDATE SET
+                first_name = EXCLUDED.first_name,
+                last_name = EXCLUDED.last_name,
+                profile_photo = EXCLUDED.profile_photo,
+                class = EXCLUDED.class,
+                institution = EXCLUDED.institution,
+                city = EXCLUDED.city,
+                interests = EXCLUDED.interests,
+                achievements = EXCLUDED.achievements,
+                certificates = EXCLUDED.certificates,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *`,
+      [
+        userId,
+        first_name.trim(),
+        last_name.trim(),
+        profile_photo || null,
+        studentClass || null,
+        institution || null,
+        city || null,
+        interests || [],
+        JSON.stringify(achievements || []),
+        JSON.stringify(certificates || []),
+      ],
+    );
+
+    // Оновлюємо також дані в таблиці users
+    await pool.query(
+      "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3",
+      [first_name.trim(), last_name.trim(), userId],
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Профіль успішно збережено",
+      profile: result.rows[0],
+    });
+  } catch (error) {
+    console.error("Помилка збереження профілю студента:", error);
+    res.status(500).json({
+      success: false,
+      message: "Внутрішня помилка сервера",
+    });
+  }
+});
+
+/**
+ * API: Завантаження фото профілю
+ * POST /api/profile/photo
+ */
+app.post(
+  "/api/profile/photo",
+  authenticateToken,
+  upload.single("photo"),
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Файл не завантажено",
+        });
+      }
+
+      // Шлях до фото (відносний для збереження в БД)
+      const photoPath = `/uploads/profile_photo/${req.file.filename}`;
+
+      // MOCK MODE
+      if (MOCK_MODE) {
+        if (!mockStudentProfiles[userId]) {
+          mockStudentProfiles[userId] = {
+            user_id: userId,
+            profile_photo: photoPath,
+          };
+        } else {
+          // Видаляємо старе фото якщо є
+          const oldPhoto = mockStudentProfiles[userId].profile_photo;
+          if (oldPhoto && oldPhoto.startsWith("/uploads/")) {
+            const oldPath = path.join(__dirname, oldPhoto);
+            if (fs.existsSync(oldPath)) {
+              fs.unlinkSync(oldPath);
+            }
+          }
+          mockStudentProfiles[userId].profile_photo = photoPath;
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: "Фото успішно завантажено",
+          photo_url: photoPath,
+        });
+      }
+
+      // Реальний режим - оновлення в БД
+      // Спочатку отримуємо старе фото для видалення
+      const oldPhotoResult = await pool.query(
+        "SELECT profile_photo FROM profile_student WHERE user_id = $1",
+        [userId],
+      );
+
+      if (
+        oldPhotoResult.rows.length > 0 &&
+        oldPhotoResult.rows[0].profile_photo
+      ) {
+        const oldPhoto = oldPhotoResult.rows[0].profile_photo;
+        if (oldPhoto.startsWith("/uploads/")) {
+          const oldPath = path.join(__dirname, oldPhoto);
+          if (fs.existsSync(oldPath)) {
+            fs.unlinkSync(oldPath);
+          }
+        }
+      }
+
+      // Оновлюємо або створюємо запис
+      await pool.query(
+        `INSERT INTO profile_student (user_id, profile_photo, first_name, last_name)
+             SELECT $1, $2, first_name, last_name FROM users WHERE id = $1
+             ON CONFLICT (user_id) DO UPDATE SET
+                profile_photo = EXCLUDED.profile_photo,
+                updated_at = CURRENT_TIMESTAMP`,
+        [userId, photoPath],
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Фото успішно завантажено",
+        photo_url: photoPath,
+      });
+    } catch (error) {
+      console.error("Помилка завантаження фото:", error);
+      res.status(500).json({
+        success: false,
+        message: "Внутрішня помилка сервера",
+      });
+    }
+  },
+);
+
+/**
+ * API: Отримання списку навчальних закладів
+ * GET /api/institutions
+ */
+app.get("/api/institutions", async (req, res) => {
+  try {
+    // MOCK MODE
+    if (MOCK_MODE) {
+      return res.status(200).json({
+        success: true,
+        institutions: mockInstitutions,
+      });
+    }
+
+    // Реальний режим з БД
+    const result = await pool.query(
+      "SELECT id, name FROM zhytomyr_educational_institutions ORDER BY name",
+    );
+
+    res.status(200).json({
+      success: true,
+      institutions: result.rows,
+    });
+  } catch (error) {
+    console.error("Помилка отримання списку закладів:", error);
+    res.status(500).json({
+      success: false,
+      message: "Внутрішня помилка сервера",
+    });
+  }
 });
 
 // PWA файли
