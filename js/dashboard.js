@@ -7,6 +7,8 @@
 // ==================== ГЛОБАЛЬНІ ЗМІННІ ====================
 let currentUser = null;
 let userPermissions = [];
+let studentProfile = null;
+let autoRefreshInterval = null;
 
 // ==================== КОНФІГУРАЦІЯ МЕНЮ ПО РОЛЯХ ====================
 const MENU_CONFIG = {
@@ -637,6 +639,9 @@ async function initializeDashboard() {
     // Визначення ролі
     const roleName = currentUser.role?.name || currentUser.role || "student";
 
+    // Завантаження профілю студента (для фото)
+    await loadStudentProfile();
+
     // Рендер інтерфейсу
     renderMenuByRole(roleName);
     renderDashboard(roleName);
@@ -647,6 +652,9 @@ async function initializeDashboard() {
     if (loadingOverlay) {
       loadingOverlay.classList.add("hidden");
     }
+
+    // Запуск автооновлення кожні 5 секунд
+    startAutoRefresh();
   } catch (error) {
     console.error("Dashboard initialization error:", error);
     showErrorPage(
@@ -654,6 +662,102 @@ async function initializeDashboard() {
       "Не вдалося завантажити дані. Спробуйте оновити сторінку.",
     );
   }
+}
+
+/**
+ * Завантаження профілю студента
+ */
+async function loadStudentProfile() {
+  try {
+    const token = localStorage.getItem("authToken");
+    const response = await fetch("/api/profile/student", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (data.success && data.profile) {
+      studentProfile = data.profile;
+    }
+  } catch (error) {
+    console.error("Error loading student profile:", error);
+  }
+}
+
+/**
+ * Запуск автооновлення даних
+ */
+function startAutoRefresh() {
+  // Зупиняємо попередній інтервал якщо є
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+  }
+
+  // Оновлюємо дані кожні 5 секунд
+  autoRefreshInterval = setInterval(async () => {
+    await silentRefresh();
+  }, 5000);
+}
+
+/**
+ * Тихе оновлення даних без перезавантаження сторінки
+ */
+async function silentRefresh() {
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    // Оновлюємо дані користувача
+    const userResponse = await fetch("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const userData = await userResponse.json();
+
+    if (userData.success) {
+      currentUser = userData.user;
+      userPermissions = userData.user.permissions || [];
+      localStorage.setItem("user", JSON.stringify(currentUser));
+    }
+
+    // Оновлюємо профіль студента
+    const profileResponse = await fetch("/api/profile/student", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const profileData = await profileResponse.json();
+
+    if (profileData.success && profileData.profile) {
+      const oldPhoto = studentProfile?.profile_photo;
+      studentProfile = profileData.profile;
+
+      // Оновлюємо UI тільки якщо щось змінилось
+      const newPhoto = studentProfile?.profile_photo;
+      if (oldPhoto !== newPhoto) {
+        updateProfilePhoto();
+      }
+    }
+
+    // Оновлюємо відображення користувача
+    renderUserProfile();
+  } catch (error) {
+    // Тихо ігноруємо помилки при автооновленні
+    console.error("Silent refresh error:", error);
+  }
+}
+
+/**
+ * Оновлення фото профілю в UI
+ */
+function updateProfilePhoto() {
+  const roleName = currentUser.role?.name || currentUser.role || "student";
+  renderDashboard(roleName);
 }
 
 // ==================== РЕНДЕР МЕНЮ ПО РОЛІ ====================
@@ -753,10 +857,16 @@ function renderProfileCard() {
   const roleName =
     currentUser.role?.display_name || currentUser.role?.name || "Користувач";
 
+  // Використовуємо фото з профілю студента якщо є
+  const profilePhoto = studentProfile?.profile_photo;
+  const avatarContent = profilePhoto
+    ? `<img src="${profilePhoto}" alt="Фото профілю" class="profile-avatar-img">`
+    : initials;
+
   return `
         <div class="profile-card">
             <div class="profile-info">
-                <div class="profile-avatar">${initials}</div>
+                <div class="profile-avatar ${profilePhoto ? "has-photo" : ""}">${avatarContent}</div>
                 <div class="profile-details">
                     <h2>${fullName}</h2>
                     <p>${currentUser.email}</p>
@@ -899,8 +1009,14 @@ function renderUserProfile() {
     const roleName =
       currentUser.role?.display_name || currentUser.role?.name || "Користувач";
 
+    // Використовуємо фото з профілю студента якщо є
+    const profilePhoto = studentProfile?.profile_photo;
+    const avatarContent = profilePhoto
+      ? `<img src="${profilePhoto}" alt="Фото" class="user-avatar-img">`
+      : initials;
+
     sidebarUser.innerHTML = `
-            <div class="user-avatar">${initials}</div>
+            <div class="user-avatar ${profilePhoto ? "has-photo" : ""}">${avatarContent}</div>
             <div class="user-info">
                 <div class="user-name">${fullName}</div>
                 <div class="user-role">${roleName}</div>
