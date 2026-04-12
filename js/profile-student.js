@@ -9,7 +9,6 @@ let currentUser = null;
 let profileData = null;
 let editAchievements = [];
 let editCertificates = [];
-let institutionsList = []; // Список навчальних закладів
 
 // ==================== КОНФІГУРАЦІЯ МЕНЮ ====================
 const MENU_CONFIG = {
@@ -166,47 +165,11 @@ function showErrorMessage(message) {
 /**
  * Ініціалізація сторінки
  */
-async function initializePage() {
+function initializePage() {
     renderSidebar();
     renderUserInfo();
     setupEventListeners();
-    await loadInstitutions(); // Завантаження списку навчальних закладів
-    await loadProfile();
-}
-
-/**
- * Завантаження списку навчальних закладів
- */
-async function loadInstitutions() {
-    try {
-        const response = await fetch("/api/institutions");
-        const data = await response.json();
-
-        if (data.success) {
-            institutionsList = data.institutions;
-            populateInstitutionsSelect();
-        }
-    } catch (error) {
-        console.error("Помилка завантаження списку закладів:", error);
-    }
-}
-
-/**
- * Заповнення select навчальних закладів
- */
-function populateInstitutionsSelect() {
-    const select = document.getElementById("editInstitution");
-    if (!select) return;
-
-    // Очищення та додавання опцій
-    select.innerHTML = '<option value="">Оберіть навчальний заклад...</option>';
-    
-    institutionsList.forEach(inst => {
-        const option = document.createElement("option");
-        option.value = inst.id;
-        option.textContent = inst.name;
-        select.appendChild(option);
-    });
+    loadProfile();
 }
 
 /**
@@ -555,14 +518,7 @@ function openEditModal() {
     document.getElementById("editLastName").value = profileData.last_name || "";
     document.getElementById("editClass").value = profileData.class || "";
     document.getElementById("editCity").value = profileData.city || "";
-    
-    // Встановлення вибраного навчального закладу (по ID)
-    const institutionSelect = document.getElementById("editInstitution");
-    if (institutionSelect && profileData.institution_id) {
-        institutionSelect.value = profileData.institution_id;
-    } else if (institutionSelect) {
-        institutionSelect.value = "";
-    }
+    document.getElementById("editInstitution").value = profileData.institution || "";
 
     // Інтереси
     const interests = profileData.interests || [];
@@ -746,17 +702,12 @@ async function saveProfile(e) {
     saveBtn.innerHTML = '<div class="loading-spinner" style="width:18px;height:18px;"></div> Збереження...';
 
     // Збір даних форми
-    const institutionSelect = document.getElementById("editInstitution");
-    const institutionId = institutionSelect.value ? parseInt(institutionSelect.value) : null;
-    const institutionName = institutionSelect.options[institutionSelect.selectedIndex]?.text || null;
-    
     const formData = {
         first_name: document.getElementById("editFirstName").value.trim(),
         last_name: document.getElementById("editLastName").value.trim(),
         class: document.getElementById("editClass").value.trim() || null,
         city: document.getElementById("editCity").value.trim() || null,
-        institution_id: institutionId,
-        institution: institutionName !== "Оберіть навчальний заклад..." ? institutionName : null,
+        institution: document.getElementById("editInstitution").value.trim() || null,
         interests: Array.from(document.querySelectorAll('input[name="interests"]:checked'))
             .map(cb => cb.value),
         achievements: editAchievements.filter(a => a.title.trim() !== ""),
@@ -794,7 +745,7 @@ async function saveProfile(e) {
         }
     } catch (error) {
         console.error("Помилка збереження профілю:", error);
-        showToast("Помилка з'єднання з с��рвером", "error");
+        showToast("Помилка з'єднання з сервером", "error");
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = `
@@ -810,7 +761,7 @@ async function saveProfile(e) {
 }
 
 /**
- * Завантаження фото профілю на сервер
+ * Завантаження фото профілю
  */
 async function handlePhotoUpload(e) {
     const file = e.target.files[0];
@@ -828,51 +779,15 @@ async function handlePhotoUpload(e) {
         return;
     }
 
-    // Показуємо індикатор завантаження
-    const photoContainer = document.getElementById("profilePhoto");
-    const originalContent = photoContainer.innerHTML;
-    photoContainer.innerHTML = `
-        <div class="photo-uploading">
-            <div class="upload-spinner"></div>
-            <span>Завантаження...</span>
-        </div>
-    `;
-
-    try {
-        const token = localStorage.getItem("authToken");
-        const formData = new FormData();
-        formData.append("photo", file);
-
-        const response = await fetch("/api/profile/student/photo", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-            body: formData,
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-            // Оновлюємо profileData з новим шляхом до фото
-            profileData.profile_photo = data.photo_url;
-            
-            // Оновлюємо відображення фото з унікальним параметром для скидання кешу
-            const photoUrl = `${data.photo_url}?t=${Date.now()}`;
-            photoContainer.innerHTML = `<img src="${photoUrl}" alt="Фото профілю">`;
-            
-            showToast("Фото профілю успішно завантажено", "success");
-        } else {
-            // Відновлюємо попередній вміст
-            photoContainer.innerHTML = originalContent;
-            showToast(data.message || "Помилка завантаження фото", "error");
-        }
-    } catch (error) {
-        console.error("Помилка завантаження фото:", error);
-        // Відновлюємо попередній вміст
-        photoContainer.innerHTML = originalContent;
-        showToast("Помилка завантаження фото", "error");
-    }
+    // Для демо - показуємо локальне зображення
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        profileData.profile_photo = event.target.result;
+        document.getElementById("profilePhoto").innerHTML = 
+            `<img src="${event.target.result}" alt="Фото профілю">`;
+        showToast("Фото профілю оновлено", "success");
+    };
+    reader.readAsDataURL(file);
 }
 
 /**
