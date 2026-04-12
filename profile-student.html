@@ -337,15 +337,18 @@
                                 <label for="editClass">Клас</label>
                                 <input type="text" id="editClass" name="class" placeholder="Наприклад: 10-А">
                             </div>
-                            <div class="form-group">
+                            <div class="form-group full-width">
                                 <label for="editCity">Місто</label>
-                                <input type="text" id="editCity" name="city" placeholder="Наприклад: Київ">
+                                <select id="editCity" name="city">
+                                    <option value="">Оберіть місто</option>
+                                    <!-- Options will be loaded dynamically -->
+                                </select>
                             </div>
                             <div class="form-group full-width">
                                 <label for="editInstitution">Навчальний заклад</label>
-                                <select id="editInstitution" name="institution">
-                                    <option value="">Оберіть навчальний заклад</option>
-                                    <!-- Options will be loaded dynamically -->
+                                <select id="editInstitution" name="institution" disabled>
+                                    <option value="">Спочатку оберіть місто</option>
+                                    <!-- Options will be loaded dynamically after city selection -->
                                 </select>
                             </div>
                         </div>

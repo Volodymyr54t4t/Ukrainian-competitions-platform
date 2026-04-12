@@ -9,7 +9,9 @@ let currentUser = null;
 let profileData = null;
 let editAchievements = [];
 let editCertificates = [];
+let citiesList = [];
 let institutionsList = [];
+let selectedCityId = null;
 
 // ==================== КОНФІГУРАЦІЯ МЕНЮ ====================
 const MENU_CONFIG = {
@@ -105,7 +107,7 @@ async function initializeProfilePage() {
             return;
         }
 
-        // Збереження даних користувача
+        // Збереження даних кори��тувача
         currentUser = data.user;
         localStorage.setItem("user", JSON.stringify(currentUser));
 
@@ -170,16 +172,76 @@ async function initializePage() {
     renderSidebar();
     renderUserInfo();
     setupEventListeners();
-    await loadInstitutions();
+    await loadCities();
     loadProfile();
 }
 
 /**
- * Завантаження списку навчальних закладів
+ * Завантаження списку міст
  */
-async function loadInstitutions() {
+async function loadCities() {
     try {
-        const response = await fetch("/api/institutions");
+        const response = await fetch("/api/cities");
+        const data = await response.json();
+        
+        if (data.success) {
+            citiesList = data.cities;
+            renderCitiesSelect();
+        }
+    } catch (error) {
+        console.error("Помилка завантаження міст:", error);
+    }
+}
+
+/**
+ * Рендер списку міст у select
+ */
+function renderCitiesSelect() {
+    const select = document.getElementById("editCity");
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">Оберіть місто</option>';
+    
+    citiesList.forEach(city => {
+        const option = document.createElement("option");
+        option.value = city.id;
+        option.textContent = city.name;
+        option.dataset.name = city.name;
+        select.appendChild(option);
+    });
+
+    // Додаємо обробник зміни міста
+    select.addEventListener("change", handleCityChange);
+}
+
+/**
+ * Обробник зміни міста
+ */
+async function handleCityChange(e) {
+    const cityId = e.target.value;
+    const institutionSelect = document.getElementById("editInstitution");
+    
+    if (!cityId) {
+        institutionSelect.innerHTML = '<option value="">Спочатку оберіть місто</option>';
+        institutionSelect.disabled = true;
+        selectedCityId = null;
+        return;
+    }
+
+    selectedCityId = parseInt(cityId);
+    await loadInstitutionsByCity(cityId);
+}
+
+/**
+ * Завантаження списку навчальних закладів за містом
+ */
+async function loadInstitutionsByCity(cityId) {
+    const institutionSelect = document.getElementById("editInstitution");
+    institutionSelect.innerHTML = '<option value="">Завантаження...</option>';
+    institutionSelect.disabled = true;
+
+    try {
+        const response = await fetch(`/api/institutions?city_id=${cityId}`);
         const data = await response.json();
         
         if (data.success) {
@@ -188,6 +250,7 @@ async function loadInstitutions() {
         }
     } catch (error) {
         console.error("Помилка завантаження закладів:", error);
+        institutionSelect.innerHTML = '<option value="">Помилка завантаження</option>';
     }
 }
 
@@ -198,7 +261,14 @@ function renderInstitutionsSelect() {
     const select = document.getElementById("editInstitution");
     if (!select) return;
     
+    if (institutionsList.length === 0) {
+        select.innerHTML = '<option value="">Немає закладів для цього міста</option>';
+        select.disabled = true;
+        return;
+    }
+
     select.innerHTML = '<option value="">Оберіть навчальний заклад</option>';
+    select.disabled = false;
     
     institutionsList.forEach(inst => {
         const option = document.createElement("option");
@@ -543,7 +613,7 @@ function updateStats() {
 /**
  * Відкриття модального вікна редагування
  */
-function openEditModal() {
+async function openEditModal() {
     const modal = document.getElementById("editProfileModal");
     modal.classList.add("active");
     document.body.style.overflow = "hidden";
@@ -552,8 +622,37 @@ function openEditModal() {
     document.getElementById("editFirstName").value = profileData.first_name || "";
     document.getElementById("editLastName").value = profileData.last_name || "";
     document.getElementById("editClass").value = profileData.class || "";
-    document.getElementById("editCity").value = profileData.city || "";
-    document.getElementById("editInstitution").value = profileData.institution || "";
+
+    // Встановлення міста
+    const citySelect = document.getElementById("editCity");
+    const institutionSelect = document.getElementById("editInstitution");
+    
+    if (profileData.city_id) {
+        citySelect.value = profileData.city_id;
+        selectedCityId = profileData.city_id;
+        
+        // Завантажуємо заклади для цього міста
+        await loadInstitutionsByCity(profileData.city_id);
+        
+        // Встановлюємо вибраний заклад
+        if (profileData.institution) {
+            institutionSelect.value = profileData.institution;
+        }
+    } else if (profileData.city) {
+        // Якщо є назва міста, шукаємо його id
+        const city = citiesList.find(c => c.name === profileData.city);
+        if (city) {
+            citySelect.value = city.id;
+            selectedCityId = city.id;
+            await loadInstitutionsByCity(city.id);
+            if (profileData.institution) {
+                institutionSelect.value = profileData.institution;
+            }
+        }
+    } else {
+        institutionSelect.innerHTML = '<option value="">Спочатку оберіть місто</option>';
+        institutionSelect.disabled = true;
+    }
 
     // Інтереси
     const interests = profileData.interests || [];
@@ -737,11 +836,17 @@ async function saveProfile(e) {
     saveBtn.innerHTML = '<div class="loading-spinner" style="width:18px;height:18px;"></div> Збереження...';
 
     // Збір даних форми
+    const citySelect = document.getElementById("editCity");
+    const selectedCityOption = citySelect.options[citySelect.selectedIndex];
+    const cityName = selectedCityOption && selectedCityOption.dataset.name ? selectedCityOption.dataset.name : null;
+    const cityId = citySelect.value ? parseInt(citySelect.value) : null;
+
     const formData = {
         first_name: document.getElementById("editFirstName").value.trim(),
         last_name: document.getElementById("editLastName").value.trim(),
         class: document.getElementById("editClass").value.trim() || null,
-        city: document.getElementById("editCity").value.trim() || null,
+        city: cityName,
+        city_id: cityId,
         institution: document.getElementById("editInstitution").value || null,
         interests: Array.from(document.querySelectorAll('input[name="interests"]:checked'))
             .map(cb => cb.value),

@@ -306,51 +306,81 @@ let mockCompetitions = [
     },
 ];
 
-// Mock дані для навчальних закладів Житомира
+// Mock дані для міст України
+const mockCities = [
+    { id: 1, name: "Київ", region: "Київська область" },
+    { id: 2, name: "Харків", region: "Харківська область" },
+    { id: 3, name: "Одеса", region: "Одеська область" },
+    { id: 4, name: "Дніпро", region: "Дніпропетровська область" },
+    { id: 5, name: "Донецьк", region: "Донецька область" },
+    { id: 6, name: "Запоріжжя", region: "Запорізька область" },
+    { id: 7, name: "Львів", region: "Львівська область" },
+    { id: 8, name: "Кривий Ріг", region: "Дніпропетровська область" },
+    { id: 9, name: "Миколаїв", region: "Миколаївська область" },
+    { id: 10, name: "Маріуполь", region: "Донецька область" },
+    { id: 11, name: "Луганськ", region: "Луганська область" },
+    { id: 12, name: "Вінниця", region: "Вінницька область" },
+    { id: 13, name: "Херсон", region: "Херсонська область" },
+    { id: 14, name: "Полтава", region: "Полтавська область" },
+    { id: 15, name: "Чернігів", region: "Чернігівська область" },
+    { id: 16, name: "Черкаси", region: "Черкаська область" },
+    { id: 17, name: "Хмельницький", region: "Хмельницька область" },
+    { id: 18, name: "Житомир", region: "Житомирська область" },
+    { id: 19, name: "Суми", region: "Сумська область" },
+    { id: 20, name: "Рівне", region: "Рівненська область" },
+    { id: 21, name: "Івано-Франківськ", region: "Івано-Франківська область" },
+    { id: 22, name: "Тернопіль", region: "Тернопільська область" },
+    { id: 23, name: "Луцьк", region: "Волинська область" },
+    { id: 24, name: "Ужгород", region: "Закарпатська область" },
+    { id: 25, name: "Чернівці", region: "Чернівецька область" },
+];
+
+// Mock дані для навчальних закладів (з прив'язкою до міста)
 const mockInstitutions = [
-    { id: 16907, name: "Вересівський ліцей Житомирської міської ради" },
-    { id: 24634, name: "Відокремлений підрозділ \"Заклад загальної середньої освіти І-ІІІ ступенів \"Житомирський ліцей Київського інституту бізнесу та технологій\"" },
-    { id: 24081, name: "Відокремлений підрозділ \"Науковий ліцей Житомирського державного університету імені Івана Франка\"" },
-    { id: 24618, name: "Відокремлений структурний підрозділ \"Науковий ліцей Поліського національного університету\"" },
-    { id: 15697, name: "ЖИТОМИРСЬКИЙ ПРИВАТНИЙ ХРИСТИЯНСЬКИЙ ЛІЦЕЙ \"СЯЙВО\" М.ЖИТОМИРА" },
-    { id: 15671, name: "Ліцей № 10 міста Житомира" },
-    { id: 15679, name: "Ліцей № 21 міста Житомира" },
-    { id: 15668, name: "Ліцей № 6 міста Житомира ім. В.Г. Короленка" },
-    { id: 15693, name: "Ліцей № 1 міста Житомира" },
-    { id: 15672, name: "Ліцей № 12 міста Житомира ім. С. Ковальчука" },
-    { id: 15673, name: "Ліцей № 14 міста Житомира" },
-    { id: 15674, name: "Ліцей № 15 міста Житомира" },
-    { id: 15675, name: "Ліцей № 16 міста Житомира" },
-    { id: 15676, name: "Ліцей № 17 міста Житомира" },
-    { id: 15677, name: "Ліцей №19 міста Житомира" },
-    { id: 15665, name: "Ліцей № 2 міста Житомира" },
-    { id: 15678, name: "Ліцей № 20 міста Житомира" },
-    { id: 15680, name: "Ліцей № 22 міста Житомира імені Василя Михайловича Кавуна" },
-    { id: 15681, name: "Ліцей № 23 міста Житомира ім. М. Очерета" },
-    { id: 15682, name: "Ліцей № 24 міста Житомира" },
-    { id: 15683, name: "Ліцей № 25 міста Житомира" },
-    { id: 15684, name: "Ліцей № 26 міста Житомира" },
-    { id: 15685, name: "Ліцей № 27 міста Житомира" },
-    { id: 15686, name: "Ліцей № 28 міста Житомира імені гетьмана Івана Виговського" },
-    { id: 15666, name: "Ліцей № 3 міста Житомира" },
-    { id: 15687, name: "Ліцей № 30 міста Житомира" },
-    { id: 15694, name: "Ліцей № 31 міста Житомира" },
-    { id: 15688, name: "Ліцей № 32 міста Житомира" },
-    { id: 15689, name: "Ліцей № 33 міста Житомира" },
-    { id: 15690, name: "Ліцей № 34 міста Житомира" },
-    { id: 15691, name: "Ліцей № 35 міста Житомира" },
-    { id: 15692, name: "Ліцей № 36 міста Житомира ім. Я. Домбровського" },
-    { id: 15664, name: "Ліцей № 4 міста Житомира" },
-    { id: 15667, name: "Ліцей № 5 міста Житомира" },
-    { id: 15669, name: "Ліцей № 7 міста Житомира імені Валерія Вікторовича Бражевського" },
-    { id: 15670, name: "Ліцей № 8 міста Житомира" },
-    { id: 24066, name: "Відокремлений підрозділ «Науковий ліцей» Державного університету «Житомирська політехніка»" },
-    { id: 15698, name: "Приватний ліцей \"Ор Авнер\" міста Житомира" },
-    { id: 20075, name: "Початкова школа № 11 міста Житомира" },
-    { id: 15699, name: "Салезіянський приватний ліцей \"Всесвіт\" м.Житомира" },
-    { id: 24592, name: "Товариство з обмеженою відповідальністю загальноосвітній навчальний заклад \"Синергія\"" },
-    { id: 24031, name: "Товариство з обмеженою відповідальністю «ЗАКЛАД ОСВІТИ «УСПІХ»" },
-    { id: 24106, name: "ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «ПРИВАТНИЙ ЛІЦЕЙ «АЙ ТІ СТЕП СКУЛ ЖИТОМИР»" },
+    // Житомир (city_id: 18)
+    { id: 16907, name: "Вересівський ліцей Житомирської міської ради", city_id: 18 },
+    { id: 24634, name: "Відокремлений підрозділ \"Заклад загальної середньої освіти І-ІІІ ступенів \"Житомирський ліцей Київського інституту бізнесу та технологій\"", city_id: 18 },
+    { id: 24081, name: "Відокремлений підрозділ \"Науковий ліцей Житомирського державного університету імені Івана Франка\"", city_id: 18 },
+    { id: 24618, name: "Відокремлений структурний підрозділ \"Науковий ліцей Поліського національного університету\"", city_id: 18 },
+    { id: 15697, name: "ЖИТОМИРСЬКИЙ ПРИВАТНИЙ ХРИСТИЯНСЬКИЙ ЛІЦЕЙ \"СЯЙВО\" М.ЖИТОМИРА", city_id: 18 },
+    { id: 15671, name: "Ліцей № 10 міста Житомира", city_id: 18 },
+    { id: 15679, name: "Ліцей № 21 міста Житомира", city_id: 18 },
+    { id: 15668, name: "Ліцей № 6 міста Житомира ім. В.Г. Короленка", city_id: 18 },
+    { id: 15693, name: "Ліцей № 1 міста Житомира", city_id: 18 },
+    { id: 15672, name: "Ліцей № 12 міста Житомира ім. С. Ковальчука", city_id: 18 },
+    { id: 15673, name: "Ліцей № 14 міста Житомира", city_id: 18 },
+    { id: 15674, name: "Ліцей № 15 міста Житомира", city_id: 18 },
+    { id: 15675, name: "Ліцей № 16 міста Житомира", city_id: 18 },
+    { id: 15676, name: "Ліцей № 17 міста Житомира", city_id: 18 },
+    { id: 15677, name: "Ліцей №19 міста Житомира", city_id: 18 },
+    { id: 15665, name: "Ліцей № 2 міста Житомира", city_id: 18 },
+    { id: 15678, name: "Ліцей № 20 міста Житомира", city_id: 18 },
+    { id: 15680, name: "Ліцей № 22 міста Житомира імені Василя Михайловича Кавуна", city_id: 18 },
+    { id: 15681, name: "Ліцей № 23 міста Житомира ім. М. Очерета", city_id: 18 },
+    { id: 15682, name: "Ліцей № 24 міста Житомира", city_id: 18 },
+    { id: 15683, name: "Ліцей № 25 міста Житомира", city_id: 18 },
+    { id: 15684, name: "Ліцей № 26 міста Житомира", city_id: 18 },
+    { id: 15685, name: "Ліцей № 27 міста Житомира", city_id: 18 },
+    { id: 15686, name: "Ліцей № 28 міста Житомира імені гетьмана Івана Виговського", city_id: 18 },
+    { id: 15666, name: "Ліцей № 3 міста Житомира", city_id: 18 },
+    { id: 15687, name: "Ліцей № 30 міста Житомира", city_id: 18 },
+    { id: 15694, name: "Ліцей № 31 міста Житомира", city_id: 18 },
+    { id: 15688, name: "Ліцей № 32 міста Житомира", city_id: 18 },
+    { id: 15689, name: "Ліцей № 33 міста Житомира", city_id: 18 },
+    { id: 15690, name: "Ліцей № 34 міста Житомира", city_id: 18 },
+    { id: 15691, name: "Ліцей № 35 міста Житомира", city_id: 18 },
+    { id: 15692, name: "Ліцей № 36 міста Житомира ім. Я. Домбровського", city_id: 18 },
+    { id: 15664, name: "Ліцей № 4 міста Житомира", city_id: 18 },
+    { id: 15667, name: "Ліцей № 5 міста Житомира", city_id: 18 },
+    { id: 15669, name: "Ліцей № 7 міста Житомира імені Валерія Вікторовича Бражевського", city_id: 18 },
+    { id: 15670, name: "Ліцей № 8 міста Житомира", city_id: 18 },
+    { id: 24066, name: "Відокремлений підрозділ «Науковий ліцей» Державного університету «Житомирська політехніка»", city_id: 18 },
+    { id: 15698, name: "Приватний ліцей \"Ор Авнер\" міста Житомира", city_id: 18 },
+    { id: 20075, name: "Початкова школа № 11 міста Житомира", city_id: 18 },
+    { id: 15699, name: "Салезіянський приватний ліцей \"Всесвіт\" м.Житомира", city_id: 18 },
+    { id: 24592, name: "Товариство з обмеженою відповідальністю загальноосвітній навчальний заклад \"Синергія\"", city_id: 18 },
+    { id: 24031, name: "Товариство з обмеженою відповідальністю «ЗАКЛАД ОСВІТИ «УСПІХ»", city_id: 18 },
+    { id: 24106, name: "ТОВАРИСТВО З ОБМЕЖЕНОЮ ВІДПОВІДАЛЬНІСТЮ «ПРИВАТНИЙ ЛІЦЕЙ «АЙ ТІ СТЕП СКУЛ ЖИТОМИР»", city_id: 18 },
 ];
 
 let pool = null;
@@ -2153,6 +2183,7 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
             class: studentClass,
             institution,
             city,
+            city_id,
             interests,
             achievements,
             certificates,
@@ -2176,6 +2207,7 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
                 class: studentClass || null,
                 institution: institution || null,
                 city: city || null,
+                city_id: city_id || null,
                 interests: interests || [],
                 achievements: achievements || [],
                 certificates: certificates || [],
@@ -2200,8 +2232,8 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
         const result = await pool.query(
             `INSERT INTO profile_student (
                 user_id, first_name, last_name, profile_photo, 
-                class, institution, city, interests, achievements, certificates
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                class, institution, city, city_id, interests, achievements, certificates
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             ON CONFLICT (user_id) DO UPDATE SET
                 first_name = EXCLUDED.first_name,
                 last_name = EXCLUDED.last_name,
@@ -2209,6 +2241,7 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
                 class = EXCLUDED.class,
                 institution = EXCLUDED.institution,
                 city = EXCLUDED.city,
+                city_id = EXCLUDED.city_id,
                 interests = EXCLUDED.interests,
                 achievements = EXCLUDED.achievements,
                 certificates = EXCLUDED.certificates,
@@ -2222,6 +2255,7 @@ app.post("/api/profile/student", authenticateToken, async (req, res) => {
                 studentClass || null,
                 institution || null,
                 city || null,
+                city_id || null,
                 interests || [],
                 JSON.stringify(achievements || []),
                 JSON.stringify(certificates || []),
@@ -2334,23 +2368,74 @@ app.post("/api/profile/photo", authenticateToken, upload.single("photo"), async 
 });
 
 /**
- * API: Отримання списку навчальних закладів
- * GET /api/institutions
+ * API: Отримання списку міст
+ * GET /api/cities
  */
-app.get("/api/institutions", async (req, res) => {
+app.get("/api/cities", async (req, res) => {
     try {
         // MOCK MODE
         if (MOCK_MODE) {
             return res.status(200).json({
                 success: true,
-                institutions: mockInstitutions,
+                cities: mockCities,
             });
         }
 
         // Реальний режим з БД
         const result = await pool.query(
-            "SELECT id, name FROM zhytomyr_educational_institutions ORDER BY name",
+            "SELECT id, name, region FROM ukraine_cities ORDER BY name",
         );
+
+        res.status(200).json({
+            success: true,
+            cities: result.rows,
+        });
+    } catch (error) {
+        console.error("Помилка отримання списку міст:", error);
+        res.status(500).json({
+            success: false,
+            message: "Внутрішня помилка сервера",
+        });
+    }
+});
+
+/**
+ * API: Отримання списку навчальних закладів за містом
+ * GET /api/institutions?city_id=18
+ */
+app.get("/api/institutions", async (req, res) => {
+    try {
+        const { city_id } = req.query;
+
+        // MOCK MODE
+        if (MOCK_MODE) {
+            let institutions = mockInstitutions;
+            
+            // Фільтруємо за містом якщо вказано
+            if (city_id) {
+                institutions = mockInstitutions.filter(
+                    inst => inst.city_id === parseInt(city_id)
+                );
+            }
+
+            return res.status(200).json({
+                success: true,
+                institutions: institutions,
+            });
+        }
+
+        // Реальний режим з БД
+        let query = "SELECT id, name, city_id FROM educational_institutions";
+        const params = [];
+
+        if (city_id) {
+            query += " WHERE city_id = $1";
+            params.push(city_id);
+        }
+
+        query += " ORDER BY name";
+
+        const result = await pool.query(query, params);
 
         res.status(200).json({
             success: true,
